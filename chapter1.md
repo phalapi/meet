@@ -1,3 +1,4 @@
-# First Chapter
+# 探索
 
-GitBook allows you to organize your book into chapters, each chapter is stored in a separate file like this one.
+    这一部分，我们将探索如何使用PhalApi进行项目开发，从对PhalApi的感性认识，再到细致的基础开发，最后深入到核心的思想和理念。
+

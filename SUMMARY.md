@@ -3,8 +3,8 @@
 * [Introduction](README.md)
 * [第一部分 探索](chapter1.md)
 * [第1章 遇见PhalApi](di-1-zhang-yu-jian-phalapi.md)
-* 第2章 基础入门
-* 第3章 高级主题
+* [第2章 基础入门](di-2-zhang-ji-chu-ru-men.md)
+* [第3章 高级主题](di-3-zhang-gao-ji-zhu-ti.md)
 * 第二部分 框架外延
 * 第4章 友好性与快速性
 * 第5章 客户端与服务端
