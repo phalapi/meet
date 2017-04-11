@@ -82,9 +82,9 @@ zenphpWS3很好地支撑毕业论文项目的开发，并初步具备了一个�
 本书所使用的环境是：  
 
  + PHP 5.3.10  
- + Nginx 1.1.19  
- + Ubuntu  
+ + Nginx 1.1.19   
  + PhalApi 1.3.7  
+ + Ubuntu 12.04（64位） 
 
 
 所以在这里，本书统一约定使用PhaApi 1.3.7 版本，并且推荐使用Nginx作为服务器。以这里的环境安装为例，假设框架解压的目录为：```/path/to/PhalApi/Public```，则首先需要添加Nginx配置文件```dev.phalapi.com```，然后重启Nginx，最后添加HOST并访问。  
