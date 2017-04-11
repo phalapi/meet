@@ -1,6 +1,6 @@
 # Summary
 
-* [Introduction](README.md)
+* [前言](README.md)
 * [第一部分 探索](chapter1.md)
 * [第1章 遇见PhalApi](di-1-zhang-yu-jian-phalapi.md)
 * [第2章 基础入门](di-2-zhang-ji-chu-ru-men.md)
