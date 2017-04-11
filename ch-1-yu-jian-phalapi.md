@@ -139,7 +139,7 @@ $ /etc/init.d/nginx restart
 http://dev.phalapi.com/demo/
 ```
 正常情况下，会看到类似以下有效果。  
-![](https://github.com/phalapi/meet/blob/master/images/ch-1-pic-1.png)
+![](https://github.com/phalapi/meet/blob/master/images/ch-1-demo-default-api.png)
 图1-1 默认接口服务的响应效果  
 
 > **温馨提示：**为了可视化JSON结果，Chrome浏览器可安装JSONView扩展，Firefox可以安装JSON-handel扩展。  
