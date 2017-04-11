@@ -72,17 +72,77 @@ zenphpWS3很好地支撑毕业论文项目的开发，并初步具备了一个�
 
 ## 1.4 下载与安装
 可到Github下载最新版框架代码。  
-> https://github.com/phalapi/phalapi  
+> Github地址：https://github.com/phalapi/phalapi  
 
 其中，release分支为中文稳定版；release-en分支为英文稳定版。需要使用PHP 5.3.3及以上版本。  
-  
-本书统一约定使用PhaApi 1.3.6版本。   
+    
    
-安装如同其他的框架一样，将下载的框架压缩包上传到服务器后解压即可。然后可以在浏览器访问Demo的默认接口服务，测试接口是否可以正常访问，如请求：  
+安装如同其他的框架一样，将下载的框架压缩包上传到服务器后解压即可。结合自己的喜爱与项目需要，可以采用Apache、XAMPP、Microsoft IIS等。根据使用的服务器不同，配置也不一样。  
+
+本书所使用的环境是：  
+
+ + PHP 5.3.10  
+ + Nginx 1.1.19  
+ + Ubuntu  
+ + PhalApi 1.3.7  
+
+
+所以在这里，本书统一约定使用PhaApi 1.3.7 版本，并且推荐使用Nginx作为服务器。以这里的环境安装为例，首先需要添加Nginx配置文件```/etc/nginx/sites-available/dev.phalapi.com```，并添加以下参考配置。  
+
+代码清单1-1 /etc/nginx/sites-available/dev.phalapi.com 
 ```
-http://localhost/phalapi/public/demo/
+server {
+    listen 80;
+    server_name dev.phalapi.com;
+
+    root /path/to/PhalApi/Public;
+    charset utf-8;
+
+    location / {
+        index index.html index.htm index.php;
+    }
+
+    location ~ \.php$ {
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
+    access_log logs/dev.phalapi.com.access.log;
+    error_log logs/dev.phalapi.com.error.log;
+}
+```
+  
+接着创建软链：  
+```
+# ln -s /etc/nginx/sites-available/dev.phalapi.com /etc/nginx/sites-enabled/dev.phalapi.com
 ```
 
+然后重启Nginx服务：  
+```
+$ /etc/init.d/nginx restart
+```
+
+接着配置本机的HOST：  
+```
+# vim /etc/hosts
+```
+并添加：  
+```
+127.0.0.1 dev.phalapi.com
+```
+
+最后在浏览器访问Demo的默认接口服务，测试接口是否可以正常访问，如请求：  
+```
+http://dev.phalapi.com/demo/
+```
+正常情况下，会看到类似以下有效果。  
+![](https://github.com/phalapi/meet/blob/master/images/ch-1-pic-1.png)
+图1-1 默认接口服务的响应效果  
+
+> **温馨提示：**为了可视化JSON结果，Chrome浏览器可安装JSONView扩展，Firefox可以安装JSON-handel扩展。  
 
 ## 1.5 创建一个新项目
 
