@@ -21,12 +21,41 @@ PhalApi默认使用的是HTTP/HTTPS协议进行通讯，请求接口的完整URL
  + 优酷开放平台：https://openapi.youku.com
  + 微信公众号： https://api.weixin.qq.com
  + 新浪微博： https://api.weibo.com
+  
+如第1章中，我们创建的接口项目，其域名为：```api.phalapi.net```。  
 
+#### 入口路径  
+入口路径是相对路径，不同的项目可以使用不同的入口。如框架自带的演示项目，其目录是：```./Public/demo```，对应的访问入口路径是：```api.phalapi.net/demo```；而新建的商城Shop项目的目录是：```./Public/shop```，则入口路径是：```api.phalapi.net/shop```。这个入口路径是可选的，也可以直接使用根目录。  
 
 #### 指定接口服务
-并且统一约定使用```service```参数来指定所请求的接口服务。通常情况下，此参数使用GET方式传递，即使用```$_GET['service']```，其格式为：```?service=Class.Action```。其中```Class```是对应请求的接口剔除Api_前缀后的类名，```Action```则是待执行的接口类中的方法名。  
+在PhalApi中，我们统一约定使用```service```参数来指定所请求的接口服务。通常情况下，此参数使用GET方式传递，即使用```$_GET['service']```，其格式为：```?service=Class.Action```。其中```Class```是对应请求的接口剔除Api_前缀后的类名，```Action```则是待执行的接口类中的方法名。当未指定service参数时，默认使用```?service=Default.Index```。  
   
-如请求默认的接口服务可用```?service=Default.Index```，则相应会调用```Api_Default::Index()```这一服务；若请求的是```?service=User.GetUserInfo```，则会调用```Api_User::GetUserInfo```这一服务。  
+如请求默认的接口服务可用```?service=Default.Index```，则相应会调用```Api_Default::Index()```这一接口服务；若请求的是```?service=Welcome.Say```，则会调用```Api_Welcome::Say```这一接口服务。  
+  
+#### 接口参数  
+接口参数是可选的，根据不同的接口服务所约定的参数进行传递。 
+
+下面来看一些完整的示例。  
+
+ + 请求默认接口服务，并省略service
+```
+http://api.phalapi.net/shop/  
+```
+
+ + 请求默认接口服务
+```
+http://api.phalapi.net/shop/?service=Default.Index  
+```
+
+ + 请求默认接口服务，并带有username参数
+```
+http://api.phalapi.net/shop/?service=Default.Index&username=dogstar 
+```
+
+ + 请求Hello World接口服务
+```
+http://api.phalapi.net/shop/?service=Default.Index
+```
 
 ### 参数规则
 ### 过滤器与签名验证
