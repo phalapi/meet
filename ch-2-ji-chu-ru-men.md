@@ -133,20 +133,22 @@ http://api.phalapi.net/shop/?service=User.Login&username=dogstar&password=123456
 系统参数是指被框架保留使用的参数。目前已被PhalApi占用的系统参数只有一个，即：service参数。类型为字符串，格式为：Class.Action，首字母不区分大小写，建议统一以大写开头。  
 
 以下是一些示例： 
+
+ + 推荐写法，类名和方法名开头大写
 ```
-// 推荐写法
 ?service=User.Login
+```
 
-// 正确写法（仅开头小写）
+ + 正确写法，类名和方法名开头都小写，或方法名全部小写
+```
 ?service=user.login
-// 正确写法（方法名全部小写）
 ?service=user.getbaseinfo
+```
 
-// 错误写法（缺少方法名）
+ + 错误写法，缺少方法名、缺少点号分割、使用竖线而非点号分割
+```
 ?service=User
-// 错误写法（缺少点号分割）
-/?service=UserLogin
-// 错误写法（默认只支持点号分割，其他格式须扩展实现）
+?service=UserLogin
 ?service=User|GetBaseInfo
 ```
 
