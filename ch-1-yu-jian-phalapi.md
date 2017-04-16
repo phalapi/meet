@@ -1,4 +1,6 @@
-> 古云此日足可惜，吾辈更应惜秒阴。——董必武《惜时》
+# 第1章 遇见PhalApi  
+
+__古云此日足可惜，吾辈更应惜秒阴。——董必武《惜时》__  
 
 ## 1.1 PhalApi是什么？
 
@@ -83,22 +85,22 @@ zenphpWS3很好地支撑毕业论文项目的开发，并初步具备了一个�
 
  + PHP 5.3.10  
  + Nginx 1.1.19   
- + PhalApi 1.3.6 及以上版本  
+ + PhalApi 1.4.0  
  + Ubuntu 12.04（64位） 
 
 
-所以在这里，本书统一约定使用PhaApi 1.3.7 版本，并且推荐使用Nginx作为服务器。以这里的环境安装为例，假设框架解压的目录为：```/path/to/PhalApi/Public```，则首先需要添加Nginx配置文件```dev.phalapi.com```，然后重启Nginx，最后添加HOST并访问。  
+所以在这里，本书统一约定使用PhaApi 1.4.0 版本，并且推荐使用Nginx作为服务器。以这里的环境安装为例，假设框架解压的目录为：```/path/to/PhalApi/Public```，则首先需要添加Nginx配置文件```api.phalapi.net```，然后重启Nginx，最后添加HOST并访问。  
 
 即首先，新建一个配置文件：  
 ```
-# vim /etc/nginx/sites-available/dev.phalapi.com
+# vim /etc/nginx/sites-available/api.phalapi.net
 ```
 
 并添加以下参考配置：  
 ```
 server {
     listen 80;
-    server_name dev.phalapi.com;
+    server_name api.phalapi.net;
 
     root /path/to/PhalApi/Public;
     charset utf-8;
@@ -115,14 +117,14 @@ server {
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
     }
 
-    access_log logs/dev.phalapi.com.access.log;
-    error_log logs/dev.phalapi.com.error.log;
+    access_log logs/api.phalapi.net.access.log;
+    error_log logs/api.phalapi.net.error.log;
 }
 ```
   
 接着，创建软链：  
 ```
-# ln -s /etc/nginx/sites-available/dev.phalapi.com /etc/nginx/sites-enabled/dev.phalapi.com
+# ln -s /etc/nginx/sites-available/api.phalapi.net /etc/nginx/sites-enabled/api.phalapi.net
 ```
 
 重启Nginx服务：  
@@ -132,33 +134,39 @@ $ /etc/init.d/nginx restart
 
 并在服务器的```/etc/hosts```文件里添加：  
 ```
-127.0.0.1 dev.phalapi.com
+127.0.0.1 api.phalapi.net
 ```
 
 最后在浏览器访问Demo的默认接口服务，测试接口是否可以正常访问，如请求：  
 ```
-http://dev.phalapi.com/demo/
+http://api.phalapi.net/demo/
 ```
-正常情况下，会看到类似以下有效果。  
-![](https://github.com/phalapi/meet/blob/master/images/ch-1-demo-default-api.png)  
-图1-1 默认接口服务的响应效果  
+正常情况下，会看到类似以下这样的返回结果。  
+```
+{
+    "ret": 200,
+    "data": {
+        "title": "Hello World!",
+        "content": "PHPer您好，欢迎使用PhalApi！",
+        "version": "1.4.0",
+        "time": 1492346885
+    },
+    "msg": ""
+}
+```
 
 > **温馨提示：** 为了可视化JSON结果，Chrome浏览器可安装JSONView扩展，Firefox可以安装JSON-handel扩展。  
 
 ## 1.5 创建一个新项目
-安装好后，可以使用在线可视化安装向导来创建一个新的项目。　　
-　　
-安装向导在目录```./Public/install/```，如按上面安装步骤操作后，可以在浏览器访问：  
-```
-http://dev.phalapi.com/install/
-```
-  
-将会看到类似以下的界面。  
-![](https://github.com/phalapi/meet/blob/master/images/ch-1-installation.png)  
-图1-2 安装向导  
+安装好后，可以使用在线可视化安装向导来创建一个新的项目。  
+
+安装向导在目录```./Public/install/```下，在浏览器输入```http://api.phalapi.net/install/```便可访问此安装向导。安装界面如下：  
+
+![](https://github.com/phalapi/meet/blob/master/images/ch-1-api-install.png)  
+图1-1 安装向导  
   
 随后按照提示，一步步操作即可。创建新项目过程，会要求输入项目名称。假设我们需要为商城创建一个项目，并命名为：shop，那么安装完成后访问效果如下。  
-![](https://github.com/phalapi/meet/blob/master/images/ch-1-shop-project.png)  
+![](https://github.com/phalapi/meet/blob/master/images/ch-1-shop-default-api.png)  
 图1-3 新建shop项目的运行效果  
   
 这时，可以看到新建了以下目录和文件。  
@@ -185,7 +193,7 @@ $ tree ./Shop/ ./Public/shop/
 ## 1.6 Hello World
 遵循国际惯例，这里编写的第一个接口也是Hello World。这是一个非常简单的接口，主要功能是返回“Hello World”这串字符。　　
   
-首先，创建一个接口类文件```./Demo/Api/Welcome.php```，并在这里实现主要的功能。  
+继续使用上面已创建的shop项目。首先，创建一个接口类文件```./Shop/Api/Welcome.php```，并在这里实现主要的功能。  
 ```
 <?php
 class Api_Welcome extends PhalApi_Api {
@@ -198,7 +206,7 @@ class Api_Welcome extends PhalApi_Api {
   
 然后，便可以对接口进行访问了。如最简单的方式，还是使用浏览器来访问。接口访问的格式为：接口域名 + 入口路径 + ?service=XXX.XXX，所以此接口服务对应的链接为： 
 ```
-http://dev.phalapi.com/demo/?service=Welcome.Say
+http://api.phalapi.net/shop/?service=Welcome.Say
 ```
   
 结果默认以JSON格式返回，即正常情况下会看到：  
@@ -207,7 +215,7 @@ http://dev.phalapi.com/demo/?service=Welcome.Say
 ```
   
 以上代码和运行结果截图如下。  
-![](https://github.com/phalapi/meet/blob/master/images/ch-1-welcome.png)  
+![](https://github.com/phalapi/meet/blob/master/images/ch-1-shop-welcome.png)  
   
 是不是发现接口开发很简单？  
   

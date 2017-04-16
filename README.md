@@ -5,7 +5,7 @@
 
  + PHP 5.3.10  
  + Nginx 1.1.19   
- + PhalApi 1.3.7  及以上版本  
+ + PhalApi 1.4.0    
  + Ubuntu 12.04（64位） 
 
 ## 版权许可
