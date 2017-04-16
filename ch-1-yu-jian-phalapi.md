@@ -186,7 +186,23 @@ $ tree ./Shop/ ./Public/shop/
 ├── index.php
 └── listAllApis.php
 ```
-其中，```./Shop/```是放置源代码的目录，包含了接口目录Api、领域目录Domain、模型目录Model、公共目录Common和测试目录Test。而```./Public/shop/```则是外部可访问的入口目录，里面主要有三个文件，分别两个在线文档页面和接口访问入口。关于各个目录和各个文件的作用，后续会作进一步说明。  
+对于各个目录，简单说明如下：  
+
+ + ./Shop：放置项目源代码，每个项目对应一个目录  
+ + ./Shop/Api：接口服务类目录
+ + ./Shop/Domain：领域业务类目录
+ + ./Shop/Model：数据模型类目录
+ + ./Shop/Common：公共目录
+ + ./Shop/Tests：单元测试目录
+
+以上都是外界不可直接访问的目录，下面则是对外可访问的目录和文件。  
+
+ + ./Public/shop：外部可访问的目录
+ + ./Public/shop/index.php：入口文件
+ + ./Public/shop/listAllApis.php：在线接口列表文档
+ + ./Public/shop/checkApiParams.php：在线接口详情文档
+  
+关于各个目录和各个文件的作用，后续会作进一步说明。  
   
 至此，我们已经取到了阶段性的成果。我们完成了框架的安装与部署，还创建了一个新的项目。接下来，让我们继续探索一下，如何在PhalApi下进行具体的接口编码开发。  
 
@@ -195,6 +211,7 @@ $ tree ./Shop/ ./Public/shop/
   
 继续使用上面已创建的shop项目。首先，创建一个接口类文件```./Shop/Api/Welcome.php```，并在这里实现主要的功能。  
 ```
+// ./Shop/Api/Welcome.php
 <?php
 class Api_Welcome extends PhalApi_Api {
 

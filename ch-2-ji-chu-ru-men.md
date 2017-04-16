@@ -33,7 +33,7 @@ PhalApi默认使用的是HTTP/HTTPS协议进行通讯，请求接口的完整URL
 如请求默认的接口服务可用```?service=Default.Index```，则相应会调用```Api_Default::Index()```这一接口服务；若请求的是```?service=Welcome.Say```，则会调用```Api_Welcome::Say```这一接口服务。  
   
 #### 接口参数  
-接口参数是可选的，根据不同的接口服务所约定的参数进行传递。 
+接口参数是可选的，根据不同的接口服务所约定的参数进行传递。可以是GET参数，POST参数，或者多媒体数据。  
 
 下面来看一些完整的示例。  
 
@@ -57,6 +57,50 @@ http://api.phalapi.net/shop/?service=Default.Index&username=dogstar
 http://api.phalapi.net/shop/?service=Default.Index
 ```
 
+至此，我们已经基本了解如何对接口服务发起请求。  
+
+#### 如何定制接口服务的传递方式？
+虽然我们约定统一使用```?service=Class.Action```的格式来传递接口服务名称，但如果项目有需要，也可以采用其他方式来传递。例如使用斜杠而非点号进行分割：```?service=Class/Action```，再进一步，使用r参数，即最终接口服务的参数格式为：```?r=Class/Action```。  
+
+如果需要采用其他传递接口服务名称的方式，则可以重载```PhalApi_Request::getService()```方法。以下是针对改用斜杠分割、并换用r参数名字的实现示例：  
+```
+// $ vim ./Shop/Common/Request/Ch1.php
+<?php
+
+class Common_Request_Ch1 extends PhalApi_Request {
+
+    public function getService() {
+        // 优先返回自定义格式的接口服务名称
+        $servcie = $this->get('r');
+        if (!empty($servcie)) {
+            return str_replace('/', '.', $servcie);
+        }
+
+        return parent::getService();
+    }
+}
+```
+
+实现好自定义的请求类后，需要在项目的入口文件进行注册。  
+```
+// $ vim ./Public/shop/index.php
+DI()->request = new Common_Request_Ch1();
+```
+
+这样，除了原来的请求方式，还可以这样请求接口服务。  
+
+
+原来的方式|现在的方式
+---|---
+?service=Default.Index|?r=Default/Index   
+?servcie=User.GetBaseInfo |?r=User/GetBaseInfo   
+
+这里有几个注意事项： 
+
+ + 1、重载后的方法需要转换为原始的接口服务格式，即：Class.Action  
+ + 2、为保持兼容性，子类需兼容父类的实现。即在取不到自定义的接口服务名称参数时，应该返回原来的接口服务。  
+
+
 ### 参数规则
 ### 过滤器与签名验证
 ### 更自由的数据源
@@ -70,7 +114,7 @@ http://api.phalapi.net/shop/?service=Default.Index
 ### 何为Api-Domain-Model模式？
 ### Api接口服务层
 ### Domain领域业务层
-### Model数据技术层
+### Model数据模型层
 
 ## 2.4 配置  
 前提
