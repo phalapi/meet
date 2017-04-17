@@ -273,6 +273,18 @@ return array(
  + **数据来源source**  
  指定当前单个参数的数据来源，可以是post、get、cookie、server、request、header、或其他自定义来源。未指定时，默认为统一数据源。  
 
+目前支持的source与对应的数据源映射关系如下：  
+
+source|对应的数据源  
+---|---
+post     | $_POST              
+get      | $_GET               
+cookie   | $_COOKIE            
+server   | $_SERVER            
+request  | $_REQUEST           
+header   | $_SERVER['HTTP_X']  
+
+表2-3 source与对应的数据源映射关系
 
 对于各种参数类型，结合示例说明如下。  
 
