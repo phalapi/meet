@@ -2,13 +2,16 @@
 
 __表达，从简单开始。——Robin Williams《写给大家看的设计书》__  
   
+这一章，我们将开始学习PhalApi框架中的基础内容，包括作为客户端如何请求接口服务，作为服务端如何返回接口结果，ADM模式的含义和依赖关系，以及其他常用的基础功能。在每个小节中，我们会先学习一些基本的使用，以便能满足普遍项目开发的技术需要。在每个小节的最后，我们还会再进一步，学习如何扩展项目的能力，定制自己的功能。  
+
+
 ## 2.1 接口请求
 
 PhalApi默认使用的是HTTP/HTTPS协议进行通讯，请求接口的完整URL格式则是：  
 ```
 接口域名 + 入口路径 + ?service=Class.Action + [接口参数]
 ```
-下面分别进行说明。  
+其中有应该单独部署的接口域名，不同项目各自的入口路径，统一约定的service参数，以及可选的接口参数。下面分别进行说明。  
 
 ### 2.1.1 接口服务URI
 
@@ -25,43 +28,70 @@ PhalApi默认使用的是HTTP/HTTPS协议进行通讯，请求接口的完整URL
 如第1章中，我们创建的接口项目，其域名为：```api.phalapi.net```。  
 
 #### (2) 入口路径  
-入口路径是相对路径，不同的项目可以使用不同的入口。如框架自带的演示项目，其目录是：```./Public/demo```，对应的访问入口路径是：```api.phalapi.net/demo```；而新建的商城Shop项目的目录是：```./Public/shop```，则入口路径是：```api.phalapi.net/shop```。这个入口路径是可选的，也可以直接使用根目录。  
+入口路径是相对路径，不同的项目可以使用不同的入口。通常在这里，我们会在部署接口项目时，会把项目对外可访问的根目录设置到```./Public```目录。这里所说的入口路径都是相对这个```./Public```目录而言的。与此同时，默认使用省略```index.php```的路径写法。  
+  
+为了更好地理解这样的对应关系，以下是一些示例对应关系。  
+
+项目|精简的入口路径|完整的入口路径|入口文件位置|项目源代码位置
+---|---|---|---
+默认的演示项目|/demo|/Public/demo/index.php|./Public/demo/index.php|./Demo
+新建的商城项目|/shop|/Public/shop/index.php|./Public/shop/index.php|./Shop
+
+如框架自带的演示项目，其目录是：```./Public/demo```，对应的访问入口路径是：```api.phalapi.net/demo```；而新建的商城Shop项目的目录是：```./Public/shop```，则入口路径是：```api.phalapi.net/shop```。  
+
+这个入口路径是可选的，也可以直接使用根目录。如果是这样，则需要调整```./Public/index.php```目录，并且不便于多项目并存的情况。    
 
 #### (3) 指定接口服务
 在PhalApi中，我们统一约定使用```service```参数来指定所请求的接口服务。通常情况下，此参数使用GET方式传递，即使用```$_GET['service']```，其格式为：```?service=Class.Action```。其中```Class```是对应请求的接口剔除Api_前缀后的类名，```Action```则是待执行的接口类中的方法名。当未指定service参数时，默认使用```?service=Default.Index```。  
   
 如请求默认的接口服务可用```?service=Default.Index```，则相应会调用```Api_Default::Index()```这一接口服务；若请求的是```?service=Welcome.Say```，则会调用```Api_Welcome::Say```这一接口服务。  
   
-#### (4) 接口参数  
-接口参数是可选的，根据不同的接口服务所约定的参数进行传递。可以是GET参数，POST参数，或者多媒体数据。  
+以下是一些示例。  
 
-下面来看一些完整的示例。  
-
- + 请求默认接口服务，并省略service
+ + 请求默认接口服务，省略service
 ```
 http://api.phalapi.net/shop/  
 ```
 
- + 请求默认接口服务
+ + 等效于请求默认接口服务
 ```
 http://api.phalapi.net/shop/?service=Default.Index  
 ```
-
- + 请求默认接口服务，并带有username参数
-```
-http://api.phalapi.net/shop/?service=Default.Index&username=dogstar 
-```
-
+  
  + 请求Hello World接口服务
 ```
 http://api.phalapi.net/shop/?service=Welcome.Say
 ```
 
+#### (4) 接口参数  
+接口参数是可选的，根据不同的接口服务所约定的参数进行传递。可以是GET参数，POST参数，或者多媒体数据。未定制的情况下，PhalApi既支持GET参数又支持POST参数。   
+
+如使用GET方式传递username参数：
+```
+$ curl "http://api.phalapi.net/shop/?service=Default.Index&username=dogstar"
+```
+也可以用POST方式传递username参数：
+```
+$ curl -d "username=dogstar" "http://api.phalapi.net/shop/?service=Default.Index"
+```
+
 至此，我们已经基本了解如何对接口服务发起请求。接下来，让我们来看下对于接口服务至关重要的要素 —— 接口参数。    
+
 ### 2.1.2 参数规则
 接口参数，对于接口服务本身来说，是非常重要的。对于外部调用的客户端来说，同等重要。对于接口参数，我们希望能够既减轻后台开发对接口参数获取、判断、验证、文档编写的痛苦；又能方便客户端快速调用，明确参数的意义。由此，我们引入了**参数规则**这一概念，即：通过配置参数的规则，自动实现对参数的获取和验证，同时自动生成在线接口文档。  
   
-参数规则是一组针对各个接口服务而配置的规则数组，由```PhalApi_Api::getRules()```方法返回。  
+参数规则是针对各个接口服务而配置的多维规则数组，由```PhalApi_Api::getRules()```方法返回。其中，参数规则数组的一维下标是接口类的方法名，对应接口服务的Action；二维下标是类属性名称，对应在服务端获取通过验证和转换化的最终客户端参数；三维下标```name```是接口参数名称，对应外部客户端请求时需要提供的参数名称。即：  
+```
+    public function getRules() {
+        return array(
+            '接口类方法名' => array(
+                '接口类属性' => array('name' => '接口参数名称'),
+            ),
+        );
+    }
+```  
+
+通常情况下，接口类属性和接口参数名称一样，但也可以不一样。一种情况是客户端的接口参数名称惯用下划线分割，即蛇形(下划线)命名法，而服务端中则惯用驼峰命名法。例如对于“是否记住我”，客户端参数用```is_remember_me```，服务端用```isRememberMe```。另一种情况是如果参数名称较长，为了节省移动网络下的流量，也可以针对客户端参数使用有意义的缩写。如前面的“是否记住我”客户端缩写成```is_rem_me```。    
 
 #### (1) 一个简单的示例
 假设我们现在需要提供一个用户登录的接口，接口参数有用户名和密码，那么新增的接口类和规则如下：  
@@ -94,18 +124,9 @@ http://api.phalapi.net/shop/?service=User.Login&username=dogstar&password=123456
 ```
 {"ret":0,"data":{"username":"dogstar","password":"123456"},"msg":""}
 ```
+
 这是因为，在接口实现类里面```getRules()```成员方法配置参数规则后，便可以通过类属性的方式，根据配置指定的名称获取对应的接口参数，如这里的：```$this->username```和```$this->password```。  
 
-可以看到，参数规则数组的一维下标是接口类的方法名。二维下标对应的是类属性名称，三维数组中的```name```对应的是外部客户端请求的参数名称。即：  
-```
-    public function getRules() {
-        return array(
-            '方法名' => array(
-                '类属性' => array('name' => '接口参数名称'),
-            ),
-        );
-    }
-```
 
 #### (2) 更完善的示例
 在实际项目开发中，我们需要对接口参数有更细致的规定，如是否必须、长度范围、最值和默认值等。 
@@ -167,9 +188,9 @@ return array(
         'sign' => array(
             'name' => 'sign', 'require' => true,
         ),
-        //客户端App版本号，如：1.0.1
+        //客户端App版本号，默认为：1.4.0
         'version' => array(
-            'name' => 'version', 'default' => '', 
+            'name' => 'version', 'default' => '1.4.0', 
         ),
     ),
 
