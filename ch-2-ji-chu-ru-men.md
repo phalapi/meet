@@ -257,20 +257,20 @@ return array(
  
  + **类型type**  
  用于指定参数的类型，可以是string、int、float、boolean、date、array、enum、file、callable，或者自定义的类型。未指定时，默认为字符串。  
-
- + **参数名称name**
+  
+ + **参数名称name**  
  接口参数名称，即客户端需要传递的参数名称。与PHP变量规则一样，以下划线或字母开头。此选项必须提供，否则会提示错误。   
-
- + **是否必须require**
+  
+ + **是否必须require**  
  为TRUE时，表示此参数为必须值；为FALSE时，表示此参数为可选。未指定时，默认为FALSE。  
-
- + **默认值default**
+  
+ + **默认值default**  
  未提供接口参数时的默认值。未指定时，默认为NULL。  
-
- + **说明描述desc**
+  
+ + **说明描述desc**  
  用于自动生成在线接口详情文档，对参数的含义和要求进行扼要说明。未指定时，默认为空字符串。  
-
- + **数据来源source**
+  
+ + **数据来源source**  
  指定当前单个参数的数据来源，可以是post、get、cookie、server、request、header、或其他自定义来源。未指定时，默认为统一数据源。  
 
 
