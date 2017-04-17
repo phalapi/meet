@@ -87,13 +87,15 @@ $ curl -d "username=dogstar" "http://api.phalapi.net/shop/?service=Default.Index
     public function getRules() {
         return array(
             '接口类方法名' => array(
-                '接口类属性' => array('name' => '接口参数名称'),
+                '接口类属性' => array('name' => '接口参数名称', ... ... ),
             ),
         );
     }
 ```  
 
-通常情况下，接口类属性和接口参数名称一样，但也可以不一样。一种情况是客户端的接口参数名称惯用下划线分割，即蛇形(下划线)命名法，而服务端中则惯用驼峰命名法。例如对于“是否记住我”，客户端参数用```is_remember_me```，服务端用```isRememberMe```。另一种情况是如果参数名称较长，为了节省移动网络下的流量，也可以针对客户端参数使用有意义的缩写。如前面的“是否记住我”客户端缩写成```is_rem_me```。    
+通常情况下，接口类属性和接口参数名称一样，但也可以不一样。一种情况是客户端的接口参数名称惯用下划线分割，即蛇形(下划线)命名法，而服务端中则惯用驼峰命名法。例如对于“是否记住我”，客户端参数用```is_remember_me```，服务端用```isRememberMe```。另一种情况是如果参数名称较长，为了节省移动网络下的流量，也可以针对客户端参数使用有意义的缩写。如前面的“是否记住我”客户端缩写成```is_rem_me```。   
+  
+在参数规则里，可以配置多个接口类方法名，每个方法名的规则，又可以配置多个接口类属性，即有多个接口参数。  
 
 #### (1) 一个简单的示例
 假设我们现在需要提供一个用户登录的接口，接口参数有用户名和密码，那么新增的接口类和规则如下：  
@@ -198,7 +200,7 @@ return array(
 
     ... ...
 ```
-其配置格式和前面所说的接口参数规则配置一样，都是一个规则数组。  
+其配置格式和前面所说的接口参数规则配置类似，都是一个规则数组。区别是这里是二维数组，相当于全部方法的公共的接口类属性。    
 
 接口参数是指各个具体的接口服务所需要的参数，为特定的接口服务所持有，独立配置。并且进一步在内部又细分为两种：  
 
@@ -260,9 +262,12 @@ class Common_Request_Ch1 extends PhalApi_Request {
 }
 ```
 
-实现好自定义的请求类后，需要在项目的入口文件进行注册。  
+实现好自定义的请求类后，需要在项目的入口文件```./Public/shop/index.php```进行注册。  
 ```
 // $ vim ./Public/shop/index.php
+//装载你的接口
+DI()->loader->addDirs('Shop');
+
 DI()->request = new Common_Request_Ch1();
 ```
 
@@ -271,13 +276,29 @@ DI()->request = new Common_Request_Ch1();
 
 原来的方式|现在的方式
 ---|---
-?service=Default.Index|?r=Default/Index   
-?service=Welcome.Say|?r=Welcome.Say   
+/shop/?service=Default.Index|?r=Default/Index   
+/shop/?service=Welcome.Say|?r=Welcome.Say   
 
 这里有几个注意事项： 
 
  + 1、重载后的方法需要转换为原始的接口服务格式，即：Class.Action  
  + 2、为保持兼容性，子类需兼容父类的实现。即在取不到自定义的接口服务名称参数时，应该返回原来的接口服务。  
+
+除了在框架编写代码实现其他接口服务的传递方式外，还可以通过Web服务器的规则Rewirte来实现。假设使用的是Nginx服务器，那么可以添加以下Rewirte配置。  
+```
+    if ( !-f $request_filename )
+    {
+        rewrite ^/shop/(.*)/(.*) /shop/?service=$1.$2;
+    }
+```
+重启Nginx后，便可得到以下这样的效果。  
+
+原来的方式|现在的方式
+---|---
+/shop/?service=Default.Index|/shop/default/index   
+/shop/?service=Welcome.Say|/shop/welcome/say  
+  
+此外，还有第三种指定传递方式的方案。使用第三方路由规则类库，然后通过简单的项目配置，从而实现更复杂、更丰富的规则定制。这部分后面会再进行讨论。  
 
 #### (2) 更自由的数据源
 #### (3) 添加新的参数规则
