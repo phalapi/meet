@@ -413,6 +413,7 @@ array('name' => 'sex', 'type' => 'enum', 'range' => array('female', 'male'))
 array('name' => 'type', 'type' => 'enum', 'range' => array(0, 1, 2))
 ```
 则会出现以下这样的误判：  
+```  
 var_dump(in_array('N', array(0, 1, 2))); // 结果为true，因为 'N' == 0
 ```  
   
