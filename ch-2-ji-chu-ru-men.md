@@ -37,6 +37,8 @@ PhalApi默认使用的是HTTP/HTTPS协议进行通讯，请求接口的完整URL
 默认的演示项目|/demo|/Public/demo/index.php|./Public/demo/index.php|./Demo
 新建的商城项目|/shop|/Public/shop/index.php|./Public/shop/index.php|./Shop
 
+表2-1 入口路径示例对应关系
+
 如框架自带的演示项目，其目录是：```./Public/demo```，对应的访问入口路径是：```api.phalapi.net/demo```；而新建的商城Shop项目的目录是：```./Public/shop```，则入口路径是：```api.phalapi.net/shop```。  
 
 这个入口路径是可选的，也可以直接使用根目录。如果是这样，则需要调整```./Public/index.php```目录，并且不便于多项目并存的情况。    
@@ -204,8 +206,8 @@ return array(
 
 接口参数是指各个具体的接口服务所需要的参数，为特定的接口服务所持有，独立配置。并且进一步在内部又细分为两种：  
 
- + 通用接口参数规则：使用```*```作为下标，对当前接口类全部的方法有效。  
- + 指定接口参数规则：使用方法名作为下标，只对接口类的特定某个方法有效。  
+ + **通用接口参数规则**：使用```*```作为下标，对当前接口类全部的方法有效。  
+ + **指定接口参数规则**：使用方法名作为下标，只对接口类的特定某个方法有效。  
 
 
 例如为了加强安全性，需要为全部的用户接口服务都加上长度为4位的验证码参数：  
@@ -235,6 +237,44 @@ return array(
  + 4、系统级参数（通常忽略，当前只有service）
 
 #### (5) 参数规则配置
+具体的参数规则，根据不同的类型有不同的配置选项，以及一些公共的配置选项。目前，主要的类型有：字符串、整数、浮点数、布尔值、时间戳/日期、数组、枚举类型、文件上传和回调函数。    
+
+类型type|参数名称 name|是否必须require|默认值default|最小值&最大值min&max|更多
+---|---|---|---|---|---
+字符串|string|true/false，默认false|应为字符串|可选|regex下标为正则匹配的规则；format下标可用于定义字符编码的类型，如utf8、gbk,gb2312
+整数|int|true/false，默认false|应为整数|可选|---
+浮点数|float|true/false，默认false|应为浮点数|可选|---
+布尔值|boolean|true/false，默认false|true/false|---|以下值会转换为true： ok, true, success, on, yes, 1
+时间戳/日期|date|true/false，默认false|会按格式转换|可选，仅当为timestamp时才判断|格式：format 为timestamp时会将字符串的日期转换
+数组|array|true/false，默认false|为非数组会自动转换/解析成数组|可选，判断数组元素个数|格式：format 为explode时，会根据separator将字符串分割成数组, 为json时，会json解析
+枚举|enum|true/false，默认false|应为range中的某个元素|---|必须，range,以数组指定枚举的范围
+文件|file|true/false，默认false|数组类型|min和max表示文件大小范围|range下标表示允许上传的文件类型，ext表示需要过滤的文件扩展名
+回调|callable|true/false，默认false|---|---|callback设置回调函数，params为回调函数的第三个参数，第一个为参数值，第二个为所配置的规则  
+
+表2-2 参数规则选项一览表
+
+公共的配置选项，除了上面的类型、参数名称、是否必须、默认值，还有说明描述、数据来源。下面分别简单说明。  
+ 
+ + **类型type**  
+ 用于指定参数的类型，可以是string、int、float、boolean、date、array、enum、file、callable，或者自定义的类型。未指定时，默认为字符串。  
+
+ + **参数名称name**
+ 接口参数名称，即客户端需要传递的参数名称。与PHP变量规则一样，以下划线或字母开头。此选项必须提供，否则会提示错误。   
+
+ + **是否必须require**
+ 为TRUE时，表示此参数为必须值；为FALSE时，表示此参数为可选。未指定时，默认为FALSE。  
+
+ + **默认值default**
+ 未提供接口参数时的默认值。未指定时，默认为NULL。  
+
+ + **说明描述desc**
+ 用于自动生成在线接口详情文档，对参数的含义和要求进行扼要说明。未指定时，默认为空字符串。  
+
+ + **数据来源source**
+ 指定当前单个参数的数据来源，可以是post、get、cookie、server、request、header、或其他自定义来源。未指定时，默认为统一数据源。  
+
+
+对于各种参数类型，结合示例说明如下。  
 
 
 ### 2.2.3 过滤器与签名验证
@@ -279,12 +319,14 @@ DI()->request = new Common_Request_Ch1();
 /shop/?service=Default.Index|?r=Default/Index   
 /shop/?service=Welcome.Say|?r=Welcome.Say   
 
+表2- 使用?r=Class/Action格式定制后的方式
+
 这里有几个注意事项： 
 
  + 1、重载后的方法需要转换为原始的接口服务格式，即：Class.Action  
  + 2、为保持兼容性，子类需兼容父类的实现。即在取不到自定义的接口服务名称参数时，应该返回原来的接口服务。  
 
-除了在框架编写代码实现其他接口服务的传递方式外，还可以通过Web服务器的规则Rewirte来实现。假设使用的是Nginx服务器，那么可以添加以下Rewirte配置。  
+除了在框架编写代码实现其他接口服务的传递方式外，还可以通过Web服务器的规则Rewirte来实现。假设使用的是Nginx服务器，那么可以添加以下Rewrite配置。  
 ```
     if ( !-f $request_filename )
     {
@@ -298,7 +340,11 @@ DI()->request = new Common_Request_Ch1();
 /shop/?service=Default.Index|/shop/default/index   
 /shop/?service=Welcome.Say|/shop/welcome/say  
   
+表2- 使用Nginx服务器Rewrite规则定制后的方式
+
 此外，还有第三种指定传递方式的方案。使用第三方路由规则类库，然后通过简单的项目配置，从而实现更复杂、更丰富的规则定制。这部分后面会再进行讨论。  
+
+小结一下，不管是哪种定制方式，最终都是转换为框架最初约定的方式，即：```?service=Class/Action```。  
 
 #### (2) 更自由的数据源
 #### (3) 添加新的参数规则
