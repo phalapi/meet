@@ -153,6 +153,7 @@ http://api.phalapi.net/shop/?service=User.Login&username=dogstar&password=123456
 }
 ```
 如果传递的密码长度不对，也会得到一个错误的返回。  
+> 温馨提示：当接口参数非法时，返回的ret都为400，且data为空。下面当再次非法返回时，将省略ret与data，以节省篇幅。
 
 #### (3) 三级参数规则配置
 参数规则主要有三种，分别是：系统参数、应用参数、接口参数。  
@@ -239,7 +240,7 @@ return array(
 #### (5) 参数规则配置
 具体的参数规则，根据不同的类型有不同的配置选项，以及一些公共的配置选项。目前，主要的类型有：字符串、整数、浮点数、布尔值、时间戳/日期、数组、枚举类型、文件上传和回调函数。    
 
-类型type|参数名称 name|是否必须require|默认值default|最小值&最大值min&max|更多
+类型type|参数名称 name|是否必须require|默认值default|最小值min&最大值max|更多
 ---|---|---|---|---|---
 字符串|string|true/false，默认false|应为字符串|可选|regex下标为正则匹配的规则；format下标可用于定义字符编码的类型，如utf8、gbk,gb2312
 整数|int|true/false，默认false|应为整数|可选|---
@@ -251,7 +252,7 @@ return array(
 文件|file|true/false，默认false|数组类型|min和max表示文件大小范围|range下标表示允许上传的文件类型，ext表示需要过滤的文件扩展名
 回调|callable|true/false，默认false|---|---|callback设置回调函数，params为回调函数的第三个参数，第一个为参数值，第二个为所配置的规则  
 
-表2-2 参数规则选项一览表
+表2-2 参数规则选项一览表  
 
 公共的配置选项，除了上面的类型、参数名称、是否必须、默认值，还有说明描述、数据来源。下面分别简单说明。  
  
@@ -267,13 +268,14 @@ return array(
  + **默认值default**  
  未提供接口参数时的默认值。未指定时，默认为NULL。  
   
+ + **最小值min&最大值max**  
+ 部分类型适用。用于指定接口参数的范围，比较时采用的是闭区间，即范围应该为：[min, max]。   
+
  + **说明描述desc**  
  用于自动生成在线接口详情文档，对参数的含义和要求进行扼要说明。未指定时，默认为空字符串。  
   
  + **数据来源source**  
- 指定当前单个参数的数据来源，可以是post、get、cookie、server、request、header、或其他自定义来源。未指定时，默认为统一数据源。  
-
-目前支持的source与对应的数据源映射关系如下：  
+ 指定当前单个参数的数据来源，可以是post、get、cookie、server、request、header、或其他自定义来源。未指定时，默认为统一数据源。目前支持的source与对应的数据源映射关系如下：  
 
 source|对应的数据源  
 ---|---
@@ -284,10 +286,211 @@ server   | $_SERVER
 request  | $_REQUEST           
 header   | $_SERVER['HTTP_X']  
 
-表2-3 source与对应的数据源映射关系
-
+表2-3 source与对应的数据源映射关系  
+  
 对于各种参数类型，结合示例说明如下。  
 
+ + **字符串 string**  
+
+当一个参数规则未指定类型时，默认为string。一个完整的写法可以为：
+```
+array('name' => 'username', 'type' => 'string', 'require' => true, 'default' => 'nobody', 'min' => 1, 'max' => 10)
+```
+这里指定了最大长度为10个字符，若传递的参数长度过长，如```&username=alonglonglonglongname```，则会异常失败返回：
+```
+"msg": "非法请求：username.len应该小于等于10, 但现在username.len = 21"
+```
+  
+
+当需要验证的是中文的话，由于一个中文字符会占用3个字节。所以在min和max验证的时候会出现一些问题。为此，PhalApi提供了format配置选项，用于指定字符集。如：  
+
+```
+array('name' => 'username', 'type' => 'string', 'format' => 'utf8', 'min' => 1, 'max' => 10)
+```
+  
+我们还可以使用```regex```下标来进行正则表达式的验证，一个邮箱的例子是：  
+```
+'email' => array(
+    'name' => 'email',
+    'require' => true,
+    'min' => '1',
+    'regex' => "/^([0-9A-Za-z\\-_\\.]+)@([0-9a-z]+\\.[a-z]{2,3}(\\.[a-z]{2})?)$/i",
+    'desc' => '邮箱',
+)
+```
+
+ + **整型 int**  
+
+整型即自然数，包括正数、0和负数。如通常数据库中的id，即可配置成：  
+```
+array('name' => 'id', 'type' => 'int', 'require' => true, 'min' => 1)
+```
+
+当传递的参数，不在其配置的范围内时，如```&id=0```，则会异常失败返回：
+```
+"msg": "非法请求：id应该大于或等于1, 但现在id = 0"
+```
+
+ + **浮点 float**  
+
+浮点型，类似整型的配置，此处略。 
+
+ + **布尔值 boolean**  
+
+布尔值，主要是可以对一些字符串转换成布尔值，如ok, true, success, on, yes, 以及会被PHP解析成true的字符串，都会转换成TRUE。如通常的“是否记住我”参数，可配置成：
+```
+array('name' => 'is_remember_me', 'type' => 'boolean', 'default' => TRUE)
+```
+  
+则以下参数，最终服务端会作为TRUE接收。  
+```
+?is_remember_me=ok
+?is_remember_me=true
+?is_remember_me=success
+?is_remember_me=on
+?is_remember_me=yes
+?is_remember_me=1
+```
+
+ + **日期 date**  
+
+日期可以按自己约定的格式传递，默认是作为字符串，此时不支持范围检测。例如配置注册时间：
+```
+array('name' => 'register_date', 'type' => 'date')
+```
+对应地，```register_date=2015-01-31 10:00:00```则会被获取到为："2015-01-31 10:00:00"。
+  
+当需要将字符串的日期转换成timestamp时，可追加配置选项```'format' => 'timestamp'```，则配置成：
+```
+array('name' => 'register_date', 'type' => 'date', 'format' => 'timestamp')
+```
+则上面的参数再请求时，则会被转换成：1422669600。  
+
+此时作为时间戳，还可以添加范围检测，如限制时间范围在31号当天：  
+```
+array('name' => 'register_date', 'type' => 'date', 'format' => 'timestamp', 'min' => strtotime('2015-01-31 00:00:00'), 'max' => strtotime('2015-01-31 23:59:59'))
+```
+
+
+ + **数组 array**  
+
+很多时候在接口进行批量获取时，都需要提供一组参数，如多个ID，多个选项。这时可以使用数组来进行配置。如：  
+```
+array('name' => 'uids', 'type' => 'array', 'format' => 'explode', 'separator' => ',')
+```
+
+这时接口参数```&uids=1,2,3```则会被转换成：  
+```
+array ( 0 => '1', 1 => '2', 2 => '3', )
+```
+
+又如接口需要使用JSON来传递整块参数时，可以这样配置：
+```
+array('name' => 'params', 'type' => 'array', 'format' => 'json')
+```
+对应地，接口参数```&params={"username":"test","password":"123456"}```则会被转换成：
+```
+array ( 'username' => 'test', 'password' => '123456', )
+```
+> 温馨提示：使用JSON传递参数时，建议使用POST方式传递。若使用GET方式，须注意参数长度不应超过浏览器最大限制长度，以及URL编码问。  
+
+特别地，当配置成了数组却未指定格式format时，接口参数会转换成只有一个元素的数组，如接口参数：```&name=test```，会转换成：```array('test')```。
+
+ + **枚举 enum**  
+
+在需要对接口参数进行范围限制时，可以使用此枚举型。如对于性别的参数，可以这样配置：
+```
+array('name' => 'sex', 'type' => 'enum', 'range' => array('female', 'male'))
+```
+当传递的参数不合法时，如```&sex=unknow```，则会被拦截，返回失败：
+```
+"msg": "非法请求：参数sex应该为：female/male，但现在sex = unknow"
+```
+  
+关于枚举类型的配置，这里需要特别注意配置时，应尽量使用字符串的值。  
+因为通常而言，接口通过GET/POST方式获取到的参数都是字符串的，而如果配置规则时指定范围用了整型，会导致底层规则验证时误判。例如接口参数为```&type=N```，而接口参数规则为：  
+```
+array('name' => 'type', 'type' => 'enum', 'range' => array(0, 1, 2))
+```
+则会出现以下这样的误判：  
+var_dump(in_array('N', array(0, 1, 2))); // 结果为true，因为 'N' == 0
+```  
+  
+为了避免这类情况发生，应该使用使用字符串配置范围值，即可这样配置：  
+```
+array('name' => '&type', 'type' => 'enum', 'range' => array(`0`, `1`, `2`))
+```
+  
+###(8)文件 file
+在需要对上传的文件进行过滤、接收和处理时，可以使用文件类型，如：
+```javascript
+array(
+    'name' => 'upfile', 
+    'type' => 'file', 
+    'min' => 0, 
+    'max' => 1024 * 1024, 
+    'range' => array('image/jpeg', 'image/png') , 
+    'ext' => array('jpeg', 'png')
+)
+```
+其中，min和max分别对应文件大小的范围，单位为字节；range为允许的文件类型，使用数组配置，且不区分大小写。 
+  
+如果成功，返回的值对应的是$_FILES["upfile"]，即会返回：
+```javascript
+array(
+     'name' => '',
+     'type' => '',
+     'size' => '',
+     'tmp_name' => '',
+)
+```
+对应的是：  
+ + $_FILES["upfile"]["name"] - 被上传文件的名称
+ + $_FILES["upfile"]["type"] - 被上传文件的类型
+ + $_FILES["upfile"]["size"] - 被上传文件的大小，以字节计
+ + $_FILES["upfile"]["tmp_name"] - 存储在服务器的文件的临时副本的名称
+ + $_FILES["upfile"]["error"] - 由文件上传导致的错误代码
+  
+
+若需要配置默认值default选项，则也应为一数组，且其格式应类似如上。
+
+其中,ext是对文件后缀名进行验证,当如果上传文件后缀名不匹配时将抛出异常。文件扩展名的过滤可以类似这样进行配置：
+```
+//单个后缀名 - 数组形式
+'ext' => array('jpg')
+
+//单个后缀名 - 字符串形式
+'ext' => 'jpg'
+
+//多个后缀名 - 数组形式
+'ext' => array('jpg', 'jpeg', 'png', 'bmp')
+
+//多个后缀名 - 字符串形式（以英文逗号分割）
+'ext' => 'jpg,jpeg,png,bmp'
+```
+  
+###(9)回调 callable
+当需要利用已有函数进行自定义验证时，可采用回调参数规则，如：  
+```
+//配置规则
+array('name' => 'version', 'type' => 'callable', 'callback' => array('Common_MyVersion', 'formatVersion'))
+```
+然后，回调时将调用下面这个函数：
+```
+//新增一个自定义的版本检测函数
+class Common_MyVersion {
+
+	public static function formatVersion($value, $rule) {
+		if (count(explode('.', $value)) < 3) {
+			throw new PhalApi_Exception_BadRequest('版本号格式错误');
+		}
+	}
+}
+```
+  
+> 温馨提示：
+> 第一个为参数值，第二个为所配置的规则，第三个参数为配置规则中的params（可忽略）
+  
 
 ### 2.2.3 过滤器与签名验证
 ### 2.2.4 扩展你的项目
