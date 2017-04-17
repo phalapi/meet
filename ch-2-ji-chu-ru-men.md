@@ -33,7 +33,7 @@ PhalApi默认使用的是HTTP/HTTPS协议进行通讯，请求接口的完整URL
 为了更好地理解这样的对应关系，以下是一些示例对应关系。  
 
 项目|精简的入口路径|完整的入口路径|入口文件位置|项目源代码位置
----|---|---|---
+---|---|---|---|---
 默认的演示项目|/demo|/Public/demo/index.php|./Public/demo/index.php|./Demo
 新建的商城项目|/shop|/Public/shop/index.php|./Public/shop/index.php|./Shop
 
