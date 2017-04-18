@@ -512,8 +512,9 @@ array(
 ```
 
  + 多个后缀名 - 字符串形式（以英文逗号分割）  
+
 ```
-'ext' => 'jpg,jpeg,png,bmp'
+'ext' => 'jpg,jpeg,png,bmp' 
 ```
 
 > 温馨提示：文件上传时请使用表单上传，并enctype 属性使用"multipart/form-data"。具体请参考：[PHP 文件上传](http://www.w3school.com.cn/php/php_file_upload.asp)  
