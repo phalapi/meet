@@ -100,6 +100,8 @@ $ curl -d "username=dogstar" "http://api.phalapi.net/shop/?service=Default.Index
 通常情况下，接口类属性和接口参数名称一样，但也可以不一样。一种情况是客户端的接口参数名称惯用下划线分割，即蛇形(下划线)命名法，而服务端中则惯用驼峰命名法。例如对于“是否记住我”，客户端参数用```is_remember_me```，服务端用```isRememberMe```。另一种情况是如果参数名称较长，为了节省移动网络下的流量，也可以针对客户端参数使用有意义的缩写。如前面的“是否记住我”客户端缩写成```is_rem_me```。   
   
 在参数规则里，可以配置多个接口类方法名，每个方法名的规则，又可以配置多个接口类属性，即有多个接口参数。  
+  
+配置好参数规则后，当接口参数通过验证后，就可以在接口类方法内，通过类成员属性获取相应的接口参数。  
 
 #### (1) 一个简单的示例
 假设我们现在需要提供一个用户登录的接口，接口参数有用户名和密码，那么新增的接口类和规则如下：  
@@ -135,7 +137,6 @@ http://api.phalapi.net/shop/?service=User.Login&username=dogstar&password=123456
 
 这是因为，在接口实现类里面```getRules()```成员方法配置参数规则后，便可以通过类属性的方式，根据配置指定的名称获取对应的接口参数，如这里的：```$this->username```和```$this->password```。  
 
-
 #### (2) 更完善的示例
 在实际项目开发中，我们需要对接口参数有更细致的规定，如是否必须、长度范围、最值和默认值等。 
 
@@ -155,7 +156,7 @@ http://api.phalapi.net/shop/?service=User.Login&username=dogstar&password=123456
 }
 ```
 如果传递的密码长度不对，也会得到一个错误的返回。  
-> 温馨提示：当接口参数非法时，返回的ret都为400，且data为空。下面当再次非法返回时，将省略ret与data，以节省篇幅。
+> 温馨提示：当接口参数非法时，返回的ret都为400，且data为空。在这一章节中，当再次非法返回时，将省略ret与data，以节省篇幅。
 
 #### (3) 三级参数规则配置
 参数规则主要有三种，分别是：系统参数规则、应用参数规则、接口参数规则。  
@@ -248,7 +249,7 @@ return array(
 整数|int|TRUE/FALSE，默认FALSE|应为整数|可选|---
 浮点数|float|TRUE/FALSE，默认FALSE|应为浮点数|可选|---
 布尔值|boolean|TRUE/FALSE，默认FALSE|true/false|---|以下值会转换为TRUE：ok，true，success，on，yes，1，以及其他PHP作为TRUE的值
-时间戳/日期|date|TRUE/FALSE，默认FALSE|日期字符串|可选，仅当为format配置为timestamp时才判断|format选项用于配置格式，为timestamp时会将字符串的日期转换为时间戳
+时间戳/日期|date|TRUE/FALSE，默认FALSE|日期字符串|可选，仅当为format配置为timestamp时才判断，且最值应为时间戳|format选项用于配置格式，为timestamp时会将字符串的日期转换为时间戳
 数组|array|TRUE/FALSE，默认FALSE|字符串或者数组，为非数组会自动转换/解析成数组|可选，判断数组元素个数|format选项用于配置数组和格式，为explode时根据separator选项将字符串分割成数组, 为json时进行JSON解析
 枚举|enum|TRUE/FALSE，默认FALSE|应为range选项中的某个元素|---|必须的range选项，为一数组，用于指定枚举的集合
 文件|file|TRUE/FALSE，默认FALSE|数组类型|可选，用于表示文件大小范围，单位为B|range选项用于指定可允许上传的文件类型；ext选项用于表示需要过滤的文件扩展名
@@ -256,27 +257,29 @@ return array(
 
 表2-2 参数规则选项一览表  
 
+##### 公共配置选项
+
 公共的配置选项，除了上面的类型、参数名称、是否必须、默认值，还有说明描述、数据来源。下面分别简单说明。  
  
- + **类型type**  
+ + **类型 type**  
  用于指定参数的类型，可以是string、int、float、boolean、date、array、enum、file、callable，或者自定义的类型。未指定时，默认为字符串。  
   
- + **参数名称name**  
+ + **参数名称 name**  
  接口参数名称，即客户端需要传递的参数名称。与PHP变量规则一样，以下划线或字母开头。此选项必须提供，否则会提示错误。   
   
  + **是否必须require**  
  为TRUE时，表示此参数为必须值；为FALSE时，表示此参数为可选。未指定时，默认为FALSE。  
   
- + **默认值default**  
+ + **默认值 default**  
  未提供接口参数时的默认值。未指定时，默认为NULL。  
   
- + **最小值min&最大值max**  
- 部分类型适用。用于指定接口参数的范围，比较时采用的是闭区间，即范围应该为：[min, max]。   
+ + **最小值 min，最大值 max**  
+ 部分类型适用。用于指定接口参数的范围，比较时采用的是闭区间，即范围应该为：[min, max]。也可以只使用min或max，若只配置了min，则表示：[min, +∞)；若只配置了maz，则表示：(-∞, max]。   
 
- + **说明描述desc**  
+ + **说明描述 desc**  
  用于自动生成在线接口详情文档，对参数的含义和要求进行扼要说明。未指定时，默认为空字符串。  
   
- + **数据来源source**  
+ + **数据来源 source**  
  指定当前单个参数的数据来源，可以是post、get、cookie、server、request、header、或其他自定义来源。未指定时，默认为统一数据源。目前支持的source与对应的数据源映射关系如下：  
 
 source|对应的数据源  
@@ -290,15 +293,25 @@ header   | $_SERVER['HTTP_X']
 
 表2-3 source与对应的数据源映射关系  
   
+##### 9种参数类型
+
 对于各种参数类型，结合示例说明如下。  
 
  + **字符串 string**  
 
-当一个参数规则未指定类型时，默认为string。一个完整的写法可以为：
+当一个参数规则未指定类型时，默认为string。如最简单的：  
+```
+array('name' => 'username')
+```
+> 温馨提示：这一小节的参数规则配置示例，都省略了类属性，以关注配置本身的内容。  
+
+这样就配置了一个参数规则，接口参数名字叫username，类型为字符串。  
+
+一个完整的写法可以为：
 ```
 array('name' => 'username', 'type' => 'string', 'require' => true, 'default' => 'nobody', 'min' => 1, 'max' => 10)
 ```
-这里指定了最大长度为10个字符，若传递的参数长度过长，如```&username=alonglonglonglongname```，则会异常失败返回：
+这里指定了为必选参数，默认值为nobody，且最小长度为1个字符，最大长度为10个字符，若传递的参数长度过长，如```&username=alonglonglonglongname```，则会异常失败返回：
 ```
 "msg": "非法请求：username.len应该小于等于10, 但现在username.len = 21"
 ```
@@ -312,13 +325,7 @@ array('name' => 'username', 'type' => 'string', 'format' => 'utf8', 'min' => 1, 
   
 我们还可以使用```regex```下标来进行正则表达式的验证，一个邮箱的例子是：  
 ```
-'email' => array(
-    'name' => 'email',
-    'require' => true,
-    'min' => '1',
-    'regex' => "/^([0-9A-Za-z\\-_\\.]+)@([0-9a-z]+\\.[a-z]{2,3}(\\.[a-z]{2})?)$/i",
-    'desc' => '邮箱',
-)
+array('name' => 'email', 'regex' => "/^([0-9A-Za-z\\-_\\.]+)@([0-9a-z]+\\.[a-z]{2,3}(\\.[a-z]{2})?)$/i")
 ```
 
  + **整型 int**  
@@ -332,6 +339,13 @@ array('name' => 'id', 'type' => 'int', 'require' => true, 'min' => 1)
 ```
 "msg": "非法请求：id应该大于或等于1, 但现在id = 0"
 ```
+
+另外，对于常见的分页参数，可以这样配置：  
+```
+array('name' => 'page_num', 'type' => 'int', 'min' => 1, 'max' => 20, 'default' => 20)
+```
+即每页数量最小1个，最大20个，默认20个。  
+
 
  + **浮点 float**  
 
@@ -362,7 +376,7 @@ array('name' => 'register_date', 'type' => 'date')
 ```
 对应地，```register_date=2015-01-31 10:00:00```则会被获取到为："2015-01-31 10:00:00"。
   
-当需要将字符串的日期转换成timestamp时，可追加配置选项```'format' => 'timestamp'```，则配置成：
+当需要将字符串的日期转换成时间戳时，可追加配置选项```'format' => 'timestamp'```，则配置成：
 ```
 array('name' => 'register_date', 'type' => 'date', 'format' => 'timestamp')
 ```
@@ -370,7 +384,7 @@ array('name' => 'register_date', 'type' => 'date', 'format' => 'timestamp')
 
 此时作为时间戳，还可以添加范围检测，如限制时间范围在31号当天：  
 ```
-array('name' => 'register_date', 'type' => 'date', 'format' => 'timestamp', 'min' => strtotime('2015-01-31 00:00:00'), 'max' => strtotime('2015-01-31 23:59:59'))
+array('name' => 'register_date', 'type' => 'date', 'format' => 'timestamp', 'min' =>  1422633600, 'max' => 1422719999)
 ```
 
 
@@ -386,6 +400,15 @@ array('name' => 'uids', 'type' => 'array', 'format' => 'explode', 'separator' =>
 array ( 0 => '1', 1 => '2', 2 => '3', )
 ```
 
+如果设置了默认值，那么默认值会从字符串，根据相应的format格式进行自动转换。如：  
+```
+array( ... ... 'default' => '4,5,6')
+```
+那么在未传参数的情况下，自动会得到：  
+```
+array ( 0 => '4', 1 => '5', 2 => '6', )
+```
+
 又如接口需要使用JSON来传递整块参数时，可以这样配置：
 ```
 array('name' => 'params', 'type' => 'array', 'format' => 'json')
@@ -396,7 +419,20 @@ array ( 'username' => 'test', 'password' => '123456', )
 ```
 > 温馨提示：使用JSON传递参数时，建议使用POST方式传递。若使用GET方式，须注意参数长度不应超过浏览器最大限制长度，以及URL编码问。  
 
-特别地，当配置成了数组却未指定格式format时，接口参数会转换成只有一个元素的数组，如接口参数：```&name=test```，会转换成：```array('test')```。
+若使用JSON格式时，设置了默认值为：  
+```
+array( ... ... 'default' => '{"username":"dogstar","password":"xxxxxx"}')
+```
+那么在未传参数的情况下，会得到转换后的：  
+```
+array ( 'username' => 'dogstar', 'password' => 'xxxxxx', )
+```
+
+特别地，当配置成了数组却未指定格式format时，接口参数会转换成只有一个元素的数组，如接口参数：```&name=test```，会转换成：
+```
+array ( 0 => 'test' )
+```
+
 
  + **枚举 enum**  
 
@@ -424,9 +460,10 @@ var_dump(in_array('N', array(0, 1, 2))); // 结果为true，因为 'N' == 0
 array('name' => '&type', 'type' => 'enum', 'range' => array(`0`, `1`, `2`))
 ```
   
-###(8)文件 file
+ + **文件 file**  
+
 在需要对上传的文件进行过滤、接收和处理时，可以使用文件类型，如：
-```javascript
+```
 array(
     'name' => 'upfile', 
     'type' => 'file', 
@@ -438,13 +475,13 @@ array(
 ```
 其中，min和max分别对应文件大小的范围，单位为字节；range为允许的文件类型，使用数组配置，且不区分大小写。 
   
-如果成功，返回的值对应的是$_FILES["upfile"]，即会返回：
-```javascript
+如果成功，返回的值对应的是```$_FILES["upfile"]```，即会返回：
+```
 array(
-     'name' => '',
-     'type' => '',
-     'size' => '',
-     'tmp_name' => '',
+     'name' => ..., // 被上传文件的名称
+     'type' => ..., // 被上传文件的类型
+     'size' => ..., // 被上传文件的大小，以字节计
+     'tmp_name' => ..., // 存储在服务器的文件的临时副本的名称
 )
 ```
 对应的是：  
@@ -457,42 +494,72 @@ array(
 
 若需要配置默认值default选项，则也应为一数组，且其格式应类似如上。
 
-其中,ext是对文件后缀名进行验证,当如果上传文件后缀名不匹配时将抛出异常。文件扩展名的过滤可以类似这样进行配置：
+其中，ext是对文件后缀名进行验证，当如果上传文件后缀名不匹配时将抛出异常。文件扩展名的过滤可以类似这样进行配置：
 ```
-//单个后缀名 - 数组形式
++ 单个后缀名 - 数组形式  
+```
 'ext' => array('jpg')
+```
 
-//单个后缀名 - 字符串形式
+ + 单个后缀名 - 字符串形式  
+```
 'ext' => 'jpg'
+```
 
-//多个后缀名 - 数组形式
+ + 多个后缀名 - 数组形式  
+```
 'ext' => array('jpg', 'jpeg', 'png', 'bmp')
+```
 
-//多个后缀名 - 字符串形式（以英文逗号分割）
+ + 多个后缀名 - 字符串形式（以英文逗号分割）  
+```
 'ext' => 'jpg,jpeg,png,bmp'
 ```
-  
-###(9)回调 callable
-当需要利用已有函数进行自定义验证时，可采用回调参数规则，如：  
-```
-//配置规则
-array('name' => 'version', 'type' => 'callable', 'callback' => array('Common_MyVersion', 'formatVersion'))
-```
-然后，回调时将调用下面这个函数：
-```
-//新增一个自定义的版本检测函数
-class Common_MyVersion {
 
-	public static function formatVersion($value, $rule) {
-		if (count(explode('.', $value)) < 3) {
-			throw new PhalApi_Exception_BadRequest('版本号格式错误');
-		}
-	}
+> 温馨提示：文件上传时请使用表单上传，并enctype 属性使用"multipart/form-data"。具体请参考：[PHP 文件上传](http://www.w3school.com.cn/php/php_file_upload.asp)  
+  
+ + **回调 callable**  
+当需要利用已有函数进行自定义验证时，可采用回调参数规则，如配置规则：  
+
+```
+array('name' => 'version', 'type' => 'callable', 'callback' => array('Common_Request_Version', 'formatVersion'))
+```
+然后，回调时将调用下面这个新增的类函数：
+```
+// $ vim ./Shop/Common/Request/Version.php
+<?php
+class Common_Request_Version {
+
+    public static function formatVersion($value, $rule) {
+        if (count(explode('.', $value)) < 3) {
+            throw new PhalApi_Exception_BadRequest('版本号格式错误');
+        }
+    }
 }
 ```
-  
-> 温馨提示：
-> 第一个为参数值，第二个为所配置的规则，第三个参数为配置规则中的params（可忽略）
+> 温馨提示：回调函数的第一个为参数原始值，第二个为所配置的规则，第三个可选参数为配置规则中的params选项。  
+
+还记得我们前面刚学的应用参数规则吗？在那里我们配置了一个version参数，现在让我们把这个版本参数类型修改成此自定义回调类型。即：  
+```
+// $ vim ./Config/app.php
+        ... ...
+        'version' => array(
+            // 'name' => 'version', 'default' => '1.4.0', , 
+            'name' => 'version', 'type' => 'callable', 'callback' => array('Common_Request_Version', 'formatVersion')
+        )
+```
+修改好后，先修改Shop项目中的用户登录接口，并追加转换后的version参数返回。  
+```
+    public function login() {
+        return array(
+            'username' => $this->username, 
+            'password' => $this->password, 
+            'version' => $this->version
+        );
+    }
+```
+然后，再次试着用合法的version参数调用此接口服务，如：
+
   
 
 ### 2.2.3 过滤器与签名验证
