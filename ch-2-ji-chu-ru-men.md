@@ -2,7 +2,9 @@
 
 __表达，从简单开始。——Robin Williams《写给大家看的设计书》__  
   
-这一章，我们将开始学习PhalApi框架中的基础内容，包括作为客户端如何请求接口服务，作为服务端如何返回接口结果，ADM模式的含义和依赖关系，以及其他常用的基础功能。在每个小节中，我们会先学习一些基本的使用，以便能满足普遍项目开发的技术需要。在每个小节的最后，我们还会再进一步，学习如何扩展项目的能力，定制自己的功能。  
+这一章，我们将开始学习PhalApi框架中的基础内容，包括作为客户端如何请求接口服务，作为服务端如何返回接口结果，ADM模式的含义和依赖关系，以及其他常用的基础功能。为避免内容空洞，我们会尽量结合前面的商城项目示例，进行基础内容的讲解。读者可以在边学习的过程中，边实践操作，加深理解。  
+
+在每个小节中，我们会先学习一些基本的使用，以便能满足普遍项目开发的技术需要。对于容易误解、容易出错的地方，我们会进行温馨提示，列出注意事项以及提供正确的解决方案。在每个小节的最后，我们还会再进一步，学习如何扩展项目的能力，定制自己的功能。  
 
 
 ## 2.1 接口请求
@@ -156,7 +158,7 @@ http://api.phalapi.net/shop/?service=User.Login&username=dogstar&password=123456
 > 温馨提示：当接口参数非法时，返回的ret都为400，且data为空。下面当再次非法返回时，将省略ret与data，以节省篇幅。
 
 #### (3) 三级参数规则配置
-参数规则主要有三种，分别是：系统参数、应用参数、接口参数。  
+参数规则主要有三种，分别是：系统参数规则、应用参数规则、接口参数规则。  
 
 系统参数是指被框架保留使用的参数。目前已被PhalApi占用的系统参数只有一个，即：service参数。类型为字符串，格式为：Class.Action，首字母不区分大小写，建议统一以大写开头。  
 
@@ -235,22 +237,22 @@ return array(
  + 1、指定接口参数规则
  + 2、通用接口参数规则
  + 3、应用参数规则
- + 4、系统级参数（通常忽略，当前只有service）
+ + 4、系统参数规则（通常忽略，当前只有service）
 
 #### (5) 参数规则配置
 具体的参数规则，根据不同的类型有不同的配置选项，以及一些公共的配置选项。目前，主要的类型有：字符串、整数、浮点数、布尔值、时间戳/日期、数组、枚举类型、文件上传和回调函数。    
 
-类型type|参数名称 name|是否必须require|默认值default|最小值min&最大值max|更多
+类型 type|参数名称 name|是否必须 require|默认值 default|最小值 min，最大值 max|更多配置选项（无特殊说明，均为可选）
 ---|---|---|---|---|---
-字符串|string|true/false，默认false|应为字符串|可选|regex下标为正则匹配的规则；format下标可用于定义字符编码的类型，如utf8、gbk,gb2312
-整数|int|true/false，默认false|应为整数|可选|---
-浮点数|float|true/false，默认false|应为浮点数|可选|---
-布尔值|boolean|true/false，默认false|true/false|---|以下值会转换为true： ok, true, success, on, yes, 1
-时间戳/日期|date|true/false，默认false|会按格式转换|可选，仅当为timestamp时才判断|格式：format 为timestamp时会将字符串的日期转换
-数组|array|true/false，默认false|为非数组会自动转换/解析成数组|可选，判断数组元素个数|格式：format 为explode时，会根据separator将字符串分割成数组, 为json时，会json解析
-枚举|enum|true/false，默认false|应为range中的某个元素|---|必须，range,以数组指定枚举的范围
-文件|file|true/false，默认false|数组类型|min和max表示文件大小范围|range下标表示允许上传的文件类型，ext表示需要过滤的文件扩展名
-回调|callable|true/false，默认false|---|---|callback设置回调函数，params为回调函数的第三个参数，第一个为参数值，第二个为所配置的规则  
+字符串|string|TRUE/FALSE，默认FALSE|应为字符串|可选|regex选项用于配置正则匹配的规则；format选项用于定义字符编码的类型，如utf8、gbk、gb2312等
+整数|int|TRUE/FALSE，默认FALSE|应为整数|可选|---
+浮点数|float|TRUE/FALSE，默认FALSE|应为浮点数|可选|---
+布尔值|boolean|TRUE/FALSE，默认FALSE|true/false|---|以下值会转换为TRUE：ok，true，success，on，yes，1，以及其他PHP作为TRUE的值
+时间戳/日期|date|TRUE/FALSE，默认FALSE|日期字符串|可选，仅当为format配置为timestamp时才判断|format选项用于配置格式，为timestamp时会将字符串的日期转换为时间戳
+数组|array|TRUE/FALSE，默认FALSE|字符串或者数组，为非数组会自动转换/解析成数组|可选，判断数组元素个数|format选项用于配置数组和格式，为explode时根据separator选项将字符串分割成数组, 为json时进行JSON解析
+枚举|enum|TRUE/FALSE，默认FALSE|应为range选项中的某个元素|---|必须的range选项，为一数组，用于指定枚举的集合
+文件|file|TRUE/FALSE，默认FALSE|数组类型|可选，用于表示文件大小范围，单位为B|range选项用于指定可允许上传的文件类型；ext选项用于表示需要过滤的文件扩展名
+回调|callable|TRUE/FALSE，默认FALSE|---|---|callback选项用于设置回调函数，params选项为回调函数的第三个参数（另外第一个为参数值，第二个为所配置的规则）  
 
 表2-2 参数规则选项一览表  
 
