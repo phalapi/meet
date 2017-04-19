@@ -353,7 +353,7 @@ array('name' => 'page_num', 'type' => 'int', 'min' => 1, 'max' => 20, 'default' 
 
  + **布尔值 boolean**  
 
-布尔值，主要是可以对一些字符串转换成布尔值，如ok, true, success, on, yes, 以及会被PHP解析成true的字符串，都会转换成TRUE。如通常的“是否记住我”参数，可配置成：
+布尔值，主要是可以对一些字符串转换成布尔值，如ok，true，success，on，yes，以及会被PHP解析成true的字符串，都会转换成TRUE。如通常的“是否记住我”参数，可配置成：
 ```
 array('name' => 'is_remember_me', 'type' => 'boolean', 'default' => TRUE)
 ```
