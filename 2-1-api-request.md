@@ -1,0 +1,1003 @@
+## 2.1 接口请求
+
+PhalApi默认使用的是HTTP/HTTPS协议进行通讯，请求接口的完整URL格式则是：  
+```
+接口域名 + 入口路径 + ?service=Class.Action + [接口参数]
+```
+其中有应该单独部署的接口域名，不同项目各自的入口路径，统一约定的service参数，以及可选的接口参数。下面分别进行说明。  
+
+### 2.1.1 接口服务URI
+
+#### (1) 接口域名
+
+通常，我们建议对于接口服务系统，应该单独部署一个接口域名，而不应与其他传统的Web应用系统或者管理后台混合在一起，以便分开维护。  
+  
+假设我们已经有一个站点，其域名为：```www.demo.com```，现需要为开发一套接口服务提供给移动App使用。直接在已有站点下添加一个入口以提供服务的做法是不推荐的，即不建议接口URI是：```www.demo.com/api```。推荐的做法是，单独配置部署一个新的接口域名，如：```api.demo.com```。当前，我们也可以发现很多公司都提供了这样独立的接口平台。例如：  
+
+ + 优酷开放平台：https://openapi.youku.com
+ + 微信公众号： https://api.weixin.qq.com
+ + 新浪微博： https://api.weibo.com
+  
+如第1章中，我们创建的接口项目，其域名为：```api.phalapi.net```。  
+
+#### (2) 入口路径  
+入口路径是相对路径，不同的项目可以使用不同的入口。通常在这里，我们会在部署接口项目时，会把项目对外可访问的根目录设置到```./Public```目录。这里所说的入口路径都是相对这个```./Public```目录而言的。与此同时，默认使用省略```index.php```的路径写法。  
+  
+为了更好地理解这样的对应关系，以下是一些示例对应关系。  
+
+项目|精简的入口路径|完整的入口路径|入口文件位置|项目源代码位置
+---|---|---|---|---
+默认的演示项目|/demo|/Public/demo/index.php|./Public/demo/index.php|./Demo
+新建的商城项目|/shop|/Public/shop/index.php|./Public/shop/index.php|./Shop
+
+表2-1 入口路径示例对应关系
+
+如框架自带的演示项目，其目录是：```./Public/demo```，对应的访问入口路径是：```api.phalapi.net/demo```；而新建的商城Shop项目的目录是：```./Public/shop```，则入口路径是：```api.phalapi.net/shop```。  
+
+这个入口路径是可选的，也可以直接使用根目录。如果是这样，则需要调整```./Public/index.php```目录，并且不便于多项目并存的情况。    
+
+#### (3) 指定接口服务
+在PhalApi中，我们统一约定使用```service```参数来指定所请求的接口服务。通常情况下，此参数使用GET方式传递，即使用```$_GET['service']```，其格式为：```?service=Class.Action```。其中```Class```是对应请求的接口剔除Api_前缀后的类名，```Action```则是待执行的接口类中的方法名。
+
+> 温馨提示：未指定service参数时，默认使用```?service=Default.Index```。  
+  
+如请求默认的接口服务可用```?service=Default.Index```，则相应会调用```Api_Default::Index()```这一接口服务；若请求的是```?service=Welcome.Say```，则会调用```Api_Welcome::Say```这一接口服务。  
+  
+以下是一些示例。  
+
+ + 请求默认接口服务，省略service
+```
+http://api.phalapi.net/shop/  
+```
+
+ + 等效于请求默认接口服务
+```
+http://api.phalapi.net/shop/?service=Default.Index  
+```
+  
+ + 请求Hello World接口服务
+```
+http://api.phalapi.net/shop/?service=Welcome.Say
+```
+
+#### (4) 接口参数  
+接口参数是可选的，根据不同的接口服务所约定的参数进行传递。可以是GET参数，POST参数，或者多媒体数据。未定制的情况下，PhalApi既支持GET参数又支持POST参数。   
+
+如使用GET方式传递username参数：
+```
+$ curl "http://api.phalapi.net/shop/?service=Default.Index&username=dogstar"
+```
+也可以用POST方式传递username参数：
+```
+$ curl -d "username=dogstar" "http://api.phalapi.net/shop/?service=Default.Index"
+```
+
+至此，我们已经基本了解如何对接口服务发起请求。接下来，让我们来看下对于接口服务至关重要的要素 —— 接口参数。    
+
+### 2.1.2 参数规则
+接口参数，对于接口服务本身来说，是非常重要的。对于外部调用的客户端来说，同等重要。对于接口参数，我们希望能够既减轻后台开发对接口参数获取、判断、验证、文档编写的痛苦；又能方便客户端快速调用，明确参数的意义。由此，我们引入了**参数规则**这一概念，即：通过配置参数的规则，自动实现对参数的获取和验证，同时自动生成在线接口文档。  
+  
+参数规则是针对各个接口服务而配置的多维规则数组，由```PhalApi_Api::getRules()```方法返回。其中，参数规则数组的一维下标是接口类的方法名，对应接口服务的Action；二维下标是类属性名称，对应在服务端获取通过验证和转换化的最终客户端参数；三维下标```name```是接口参数名称，对应外部客户端请求时需要提供的参数名称。即：  
+```
+    public function getRules() {
+        return array(
+            '接口类方法名' => array(
+                '接口类属性' => array('name' => '接口参数名称', ... ... ),
+            ),
+        );
+    }
+```  
+
+通常情况下，接口类属性和接口参数名称一样，但也可以不一样。一种情况是客户端的接口参数名称惯用下划线分割，即蛇形(下划线)命名法，而服务端中则惯用驼峰命名法。例如对于“是否记住我”，客户端参数用```is_remember_me```，服务端用```isRememberMe```。另一种情况是如果参数名称较长，为了节省移动网络下的流量，也可以针对客户端参数使用有意义的缩写。如前面的“是否记住我”客户端缩写成```is_rem_me```。   
+  
+在参数规则里，可以配置多个接口类方法名，每个方法名的规则，又可以配置多个接口类属性，即有多个接口参数。  
+  
+配置好参数规则后，当接口参数通过验证后，就可以在接口类方法内，通过类成员属性获取相应的接口参数。  
+
+#### (1) 一个简单的示例
+假设我们现在需要提供一个用户登录的接口，接口参数有用户名和密码，那么新增的接口类和规则如下：  
+```
+// $ vim ./Shop/Api/User.php
+<?php
+
+class Api_User extends PhalApi_Api {
+
+    public function getRules() {
+        return array(
+            'login' => array(
+                'username' => array('name' => 'username'),
+                'password' => array('name' => 'password'),
+            ),
+        );
+    }
+
+    public function login() {
+        return array('username' => $this->username, 'password' => $this->password);
+    }                               
+}
+```
+
+当我们请求此接口服务，并类似这样带上username和password参数时：  
+```
+http://api.phalapi.net/shop/?service=User.Login&username=dogstar&password=123456
+```
+就可以得到这样的返回结果。  
+```
+{"ret":0,"data":{"username":"dogstar","password":"123456"},"msg":""}
+```
+
+这是因为，在接口实现类里面```getRules()```成员方法配置参数规则后，便可以通过类属性的方式，根据配置指定的名称获取对应的接口参数，如这里的：```$this->username```和```$this->password```。  
+
+#### (2) 更完善的示例
+在实际项目开发中，我们需要对接口参数有更细致的规定，如是否必须、长度范围、最值和默认值等。 
+
+继续上面的业务场景，用户登录接口服务的用户名参数和密码参数皆为必须，且密码长度至少为6个字符，则可以参数规则调整为：  
+```
+'login' => array(
+   'username' => array('name' => 'username', 'require' => true),
+   'password' => array('name' => 'password', 'require' => true, 'min' => 6),
+),
+```
+配置好后，如果不带任何参数再次请求```?service=User.Login```，就会被视为非法请求，并得到这样的错误提示：  
+```
+{
+    "ret": 400,
+    "data": [],
+    "msg": "非法请求：缺少必要参数username"
+}
+```
+如果传递的密码长度不对，也会得到一个错误的返回。  
+> 温馨提示：当接口参数非法时，返回的ret都为400，且data为空。在这一章节中，当再次非法返回时，将省略ret与data，以节省篇幅。
+
+#### (3) 三级参数规则配置
+参数规则主要有三种，分别是：系统参数规则、应用参数规则、接口参数规则。  
+
+系统参数是指被框架保留使用的参数。目前已被PhalApi占用的系统参数只有一个，即：service参数。类型为字符串，格式为：Class.Action，首字母不区分大小写，建议统一以大写开头。  
+
+以下是一些示例： 
+
+ + 推荐写法，类名和方法名开头大写
+```
+?service=User.Login
+```
+
+ + 正确写法，类名和方法名开头都小写，或方法名全部小写
+```
+?service=user.login
+?service=user.getbaseinfo
+```
+
+ + 错误写法，缺少方法名、缺少点号分割、使用竖线而非点号分割
+```
+?service=User
+?service=UserLogin
+?service=User|GetBaseInfo
+```
+
+> 温馨提示：service参数中的类名只能开头小写，否则会导致linux系统下类文件加载失败。 
+
+应用参数是指在一个接口系统中，全部项目的全部接口都需要的参数，或者通用的参数。假如我们的商城接口系统中全部的接口服务都需要必须的签名sign参数，以及非必须的版本号，则可以在```./Config/app.php```中的```apiCommonRules```进行应用参数规则的配置：  
+```
+//$vim ./Config/app.php
+<?php
+return array(
+    /**
+     * 应用接口层的统一参数
+     */
+    'apiCommonRules' => array(
+        //签名
+        'sign' => array(
+            'name' => 'sign', 'require' => true,
+        ),
+        //客户端App版本号，默认为：1.4.0
+        'version' => array(
+            'name' => 'version', 'default' => '1.4.0', 
+        ),
+    ),
+
+    ... ...
+```
+其配置格式和前面所说的接口参数规则配置类似，都是一个规则数组。区别是这里是二维数组，相当于全部方法的公共的接口类属性。    
+
+接口参数是指各个具体的接口服务所需要的参数，为特定的接口服务所持有，独立配置。并且进一步在内部又细分为两种：  
+
+ + **通用接口参数规则**：使用```*```作为下标，对当前接口类全部的方法有效。  
+ + **指定接口参数规则**：使用方法名作为下标，只对接口类的特定某个方法有效。  
+
+
+例如为了加强安全性，需要为全部的用户接口服务都加上长度为4位的验证码参数：  
+```
+    public function getRules() {
+        return array(
+            '*' => array(
+                'code' => array('name' => 'code', 'require' => true, 'min' => 4, 'max' => 4),
+            ),
+            'login' => array(
+                'username' => array('name' => 'username', 'require' => true),
+                'password' => array('name' => 'password', 'require' => true, 'min' => 6),
+            ),
+        );
+    }
+```
+现在，当再次请求用户登录接口，除了要提供用户名和密码外，我们还要提供验证码code参数。并且，对于Api_User类的其他方法也一样。  
+
+#### (4) 多个参数规则时的优先级
+当同一个参数规则分别在应用参数、通用接口参数及指定接口参数出现时，后面的规则会覆盖前面的，即具体化的规则会替换通用的规则，以保证接口参数满足特定场合的定制要求。  
+
+简而言之，多个参数规则的优先级从高到下，分别是（正如你想到的那样）： 
+  
+ + 1、指定接口参数规则
+ + 2、通用接口参数规则
+ + 3、应用参数规则
+ + 4、系统参数规则（通常忽略，当前只有service）
+
+#### (5) 参数规则配置
+具体的参数规则，根据不同的类型有不同的配置选项，以及一些公共的配置选项。目前，主要的类型有：字符串、整数、浮点数、布尔值、时间戳/日期、数组、枚举类型、文件上传和回调函数。    
+
+类型 type|参数名称 name|是否必须 require|默认值 default|最小值 min，最大值 max|更多配置选项（无特殊说明，均为可选）
+---|---|---|---|---|---
+字符串|string|TRUE/FALSE，默认FALSE|应为字符串|可选|regex选项用于配置正则匹配的规则；format选项用于定义字符编码的类型，如utf8、gbk、gb2312等
+整数|int|TRUE/FALSE，默认FALSE|应为整数|可选|---
+浮点数|float|TRUE/FALSE，默认FALSE|应为浮点数|可选|---
+布尔值|boolean|TRUE/FALSE，默认FALSE|true/false|---|以下值会转换为TRUE：ok，true，success，on，yes，1，以及其他PHP作为TRUE的值
+时间戳/日期|date|TRUE/FALSE，默认FALSE|日期字符串|可选，仅当为format配置为timestamp时才判断，且最值应为时间戳|format选项用于配置格式，为timestamp时会将字符串的日期转换为时间戳
+数组|array|TRUE/FALSE，默认FALSE|字符串或者数组，为非数组会自动转换/解析成数组|可选，判断数组元素个数|format选项用于配置数组和格式，为explode时根据separator选项将字符串分割成数组, 为json时进行JSON解析
+枚举|enum|TRUE/FALSE，默认FALSE|应为range选项中的某个元素|---|必须的range选项，为一数组，用于指定枚举的集合
+文件|file|TRUE/FALSE，默认FALSE|数组类型|可选，用于表示文件大小范围，单位为B|range选项用于指定可允许上传的文件类型；ext选项用于表示需要过滤的文件扩展名
+回调|callable/callback|TRUE/FALSE，默认FALSE|---|---|callable/callback选项用于设置回调函数，params选项为回调函数的第三个参数（另外第一个为参数值，第二个为所配置的规则）  
+
+表2-2 参数规则选项一览表  
+
+##### 公共配置选项
+
+公共的配置选项，除了上面的类型、参数名称、是否必须、默认值，还有说明描述、数据来源。下面分别简单说明。  
+ 
+ + **类型 type**  
+ 用于指定参数的类型，可以是string、int、float、boolean、date、array、enum、file、callable，或者自定义的类型。未指定时，默认为字符串。  
+  
+ + **参数名称 name**  
+ 接口参数名称，即客户端需要传递的参数名称。与PHP变量规则一样，以下划线或字母开头。此选项必须提供，否则会提示错误。   
+  
+ + **是否必须require**  
+ 为TRUE时，表示此参数为必须值；为FALSE时，表示此参数为可选。未指定时，默认为FALSE。  
+  
+ + **默认值 default**  
+ 未提供接口参数时的默认值。未指定时，默认为NULL。  
+  
+ + **最小值 min，最大值 max**  
+ 部分类型适用。用于指定接口参数的范围，比较时采用的是闭区间，即范围应该为：[min, max]。也可以只使用min或max，若只配置了min，则表示：[min, +∞)；若只配置了maz，则表示：(-∞, max]。   
+
+ + **说明描述 desc**  
+ 用于自动生成在线接口详情文档，对参数的含义和要求进行扼要说明。未指定时，默认为空字符串。  
+  
+ + **数据来源 source**  
+ 指定当前单个参数的数据来源，可以是post、get、cookie、server、request、header、或其他自定义来源。未指定时，默认为统一数据源。目前支持的source与对应的数据源映射关系如下：  
+
+source|对应的数据源  
+---|---
+post     | $_POST              
+get      | $_GET               
+cookie   | $_COOKIE            
+server   | $_SERVER            
+request  | $_REQUEST           
+header   | $_SERVER['HTTP_X']  
+
+表2-3 source与对应的数据源映射关系  
+  
+通过source参数可以轻松、更自由获取不同来源的参数。以下是一些常用的配置示例。  
+```
+// 获取HTTP请求方法，判断是POST还是GET
+'method' => array('name' => 'REQUEST_METHOD', 'source' => 'server'),
+
+// 获取COOKIE中的标识
+'is_new_user' => array('name' => 'is_new_user', 'source' => 'cookie'),
+
+// 获取HTTP头部中的编码，判断是否为utf-8
+'charset' => array('name' => 'Accept-Charset', 'source' => 'header'),
+```
+
+若配置的source为无效或非法时，则会抛出异常。如配置了```'source' => 'NOT_FOUND'```，会得到：     
+```
+"msg": "服务器运行错误: 参数规则中未知的数据源：NOT_FOUND"
+```
+
+##### 9种参数类型
+
+对于各种参数类型，结合示例说明如下。  
+
+ + **字符串 string**  
+
+当一个参数规则未指定类型时，默认为string。如最简单的：  
+```
+array('name' => 'username')
+```
+> 温馨提示：这一小节的参数规则配置示例，都省略了类属性，以关注配置本身的内容。  
+
+这样就配置了一个参数规则，接口参数名字叫username，类型为字符串。  
+
+一个完整的写法可以为：
+```
+array('name' => 'username', 'type' => 'string', 'require' => true, 'default' => 'nobody', 'min' => 1, 'max' => 10)
+```
+这里指定了为必选参数，默认值为nobody，且最小长度为1个字符，最大长度为10个字符，若传递的参数长度过长，如```&username=alonglonglonglongname```，则会异常失败返回：
+```
+"msg": "非法请求：username.len应该小于等于10, 但现在username.len = 21"
+```
+  
+
+当需要验证的是中文的话，由于一个中文字符会占用3个字节。所以在min和max验证的时候会出现一些问题。为此，PhalApi提供了format配置选项，用于指定字符集。如：  
+
+```
+array('name' => 'username', 'type' => 'string', 'format' => 'utf8', 'min' => 1, 'max' => 10)
+```
+  
+我们还可以使用```regex```下标来进行正则表达式的验证，一个邮箱的例子是：  
+```
+array('name' => 'email', 'regex' => "/^([0-9A-Za-z\\-_\\.]+)@([0-9a-z]+\\.[a-z]{2,3}(\\.[a-z]{2})?)$/i")
+```
+
+ + **整型 int**  
+
+整型即自然数，包括正数、0和负数。如通常数据库中的id，即可配置成：  
+```
+array('name' => 'id', 'type' => 'int', 'require' => true, 'min' => 1)
+```
+
+当传递的参数，不在其配置的范围内时，如```&id=0```，则会异常失败返回：
+```
+"msg": "非法请求：id应该大于或等于1, 但现在id = 0"
+```
+
+另外，对于常见的分页参数，可以这样配置：  
+```
+array('name' => 'page_num', 'type' => 'int', 'min' => 1, 'max' => 20, 'default' => 20)
+```
+即每页数量最小1个，最大20个，默认20个。  
+
+
+ + **浮点 float**  
+
+浮点型，类似整型的配置，此处略。 
+
+ + **布尔值 boolean**  
+
+布尔值，主要是可以对一些字符串转换成布尔值，如ok，true，success，on，yes，以及会被PHP解析成true的字符串，都会转换成TRUE。如通常的“是否记住我”参数，可配置成：
+```
+array('name' => 'is_remember_me', 'type' => 'boolean', 'default' => TRUE)
+```
+  
+则以下参数，最终服务端会作为TRUE接收。  
+```
+?is_remember_me=ok
+?is_remember_me=true
+?is_remember_me=success
+?is_remember_me=on
+?is_remember_me=yes
+?is_remember_me=1
+```
+
+ + **日期 date**  
+
+日期可以按自己约定的格式传递，默认是作为字符串，此时不支持范围检测。例如配置注册时间：
+```
+array('name' => 'register_date', 'type' => 'date')
+```
+对应地，```register_date=2015-01-31 10:00:00```则会被获取到为："2015-01-31 10:00:00"。
+  
+当需要将字符串的日期转换成时间戳时，可追加配置选项```'format' => 'timestamp'```，则配置成：
+```
+array('name' => 'register_date', 'type' => 'date', 'format' => 'timestamp')
+```
+则上面的参数再请求时，则会被转换成：1422669600。  
+
+此时作为时间戳，还可以添加范围检测，如限制时间范围在31号当天：  
+```
+array('name' => 'register_date', 'type' => 'date', 'format' => 'timestamp', 'min' =>  1422633600, 'max' => 1422719999)
+```
+
+当配置的最小值或最大值为字符串的日期时，会自动先转换成时间戳再进行检测比较。如可以配置成：  
+```
+array('name' => 'register_date', ... ... 'min' => '2015-01-31 00:00:00', 'max' => '2015-01-31 23:59:59')
+```
+
+ + **数组 array**  
+
+很多时候在接口进行批量获取时，都需要提供一组参数，如多个ID，多个选项。这时可以使用数组来进行配置。如：  
+```
+array('name' => 'uids', 'type' => 'array', 'format' => 'explode', 'separator' => ',')
+```
+
+这时接口参数```&uids=1,2,3```则会被转换成：  
+```
+array ( 0 => '1', 1 => '2', 2 => '3', )
+```
+
+如果设置了默认值，那么默认值会从字符串，根据相应的format格式进行自动转换。如：  
+```
+array( ... ... 'default' => '4,5,6')
+```
+那么在未传参数的情况下，自动会得到：  
+```
+array ( 0 => '4', 1 => '5', 2 => '6', )
+```
+
+又如接口需要使用JSON来传递整块参数时，可以这样配置：
+```
+array('name' => 'params', 'type' => 'array', 'format' => 'json')
+```
+对应地，接口参数```&params={"username":"test","password":"123456"}```则会被转换成：
+```
+array ( 'username' => 'test', 'password' => '123456', )
+```
+> 温馨提示：使用JSON传递参数时，建议使用POST方式传递。若使用GET方式，须注意参数长度不应超过浏览器最大限制长度，以及URL编码问。  
+
+若使用JSON格式时，设置了默认值为：  
+```
+array( ... ... 'default' => '{"username":"dogstar","password":"xxxxxx"}')
+```
+那么在未传参数的情况下，会得到转换后的：  
+```
+array ( 'username' => 'dogstar', 'password' => 'xxxxxx', )
+```
+
+特别地，当配置成了数组却未指定格式format时，接口参数会转换成只有一个元素的数组，如接口参数：```&name=test```，会转换成：
+```
+array ( 0 => 'test' )
+```
+
+
+ + **枚举 enum**  
+
+在需要对接口参数进行范围限制时，可以使用此枚举型。如对于性别的参数，可以这样配置：
+```
+array('name' => 'sex', 'type' => 'enum', 'range' => array('female', 'male'))
+```
+当传递的参数不合法时，如```&sex=unknow```，则会被拦截，返回失败：
+```
+"msg": "非法请求：参数sex应该为：female/male，但现在sex = unknow"
+```
+  
+关于枚举类型的配置，这里需要特别注意配置时，应尽量使用字符串的值。  
+因为通常而言，接口通过GET/POST方式获取到的参数都是字符串的，而如果配置规则时指定范围用了整型，会导致底层规则验证时误判。例如接口参数为```&type=N```，而接口参数规则为：  
+```
+array('name' => 'type', 'type' => 'enum', 'range' => array(0, 1, 2))
+```
+则会出现以下这样的误判：  
+```  
+var_dump(in_array('N', array(0, 1, 2))); // 结果为true，因为 'N' == 0
+```  
+  
+为了避免这类情况发生，应该使用使用字符串配置范围值，即可这样配置：  
+```
+array('name' => '&type', 'type' => 'enum', 'range' => array(`0`, `1`, `2`))
+```
+  
+ + **文件 file**  
+
+在需要对上传的文件进行过滤、接收和处理时，可以使用文件类型，如：
+```
+array(
+    'name' => 'upfile', 
+    'type' => 'file', 
+    'min' => 0, 
+    'max' => 1024 * 1024, 
+    'range' => array('image/jpeg', 'image/png') , 
+    'ext' => array('jpeg', 'png')
+)
+```
+其中，min和max分别对应文件大小的范围，单位为字节；range为允许的文件类型，使用数组配置，且不区分大小写。 
+  
+如果成功，返回的值对应的是```$_FILES["upfile"]```，即会返回：
+```
+array(
+     'name' => ..., // 被上传文件的名称
+     'type' => ..., // 被上传文件的类型
+     'size' => ..., // 被上传文件的大小，以字节计
+     'tmp_name' => ..., // 存储在服务器的文件的临时副本的名称
+)
+```
+对应的是：  
+ + $_FILES["upfile"]["name"] - 被上传文件的名称
+ + $_FILES["upfile"]["type"] - 被上传文件的类型
+ + $_FILES["upfile"]["size"] - 被上传文件的大小，以字节计
+ + $_FILES["upfile"]["tmp_name"] - 存储在服务器的文件的临时副本的名称
+ + $_FILES["upfile"]["error"] - 由文件上传导致的错误代码
+  
+> 参考：以上内容来自W3School，文件上传时请使用表单上传，并enctype 属性使用"multipart/form-data"。更多请参考[PHP 文件上传](http://www.w3school.com.cn/php/php_file_upload.asp)。  
+
+若需要配置默认值default选项，则也应为一数组，且其格式应类似如上。
+
+其中，ext是对文件后缀名进行验证，当如果上传文件后缀名不匹配时将抛出异常。文件扩展名的过滤可以类似这样进行配置：
+
++ 单个后缀名 - 数组形式  
+```
+'ext' => array('jpg')
+```
+
+ + 单个后缀名 - 字符串形式  
+```
+'ext' => 'jpg'
+```
+
+ + 多个后缀名 - 数组形式  
+```
+'ext' => array('jpg', 'jpeg', 'png', 'bmp')
+```
+
+ + 多个后缀名 - 字符串形式（以英文逗号分割）  
+
+```
+'ext' => 'jpg,jpeg,png,bmp' 
+```
+
+  
+ + **回调 callable/callback**  
+
+当需要利用已有函数进行自定义验证时，可采用回调参数规则，如配置规则：  
+
+```
+array('name' => 'version', 'type' => 'callable', 'callback' => 'Common_Request_Version::formatVersion')
+```
+然后，回调时将调用下面这个新增的类函数：
+```
+// $ vim ./Shop/Common/Request/Version.php
+<?php
+class Common_Request_Version {
+
+    public static function formatVersion($value, $rule) {
+        if (count(explode('.', $value)) < 3) {
+            throw new PhalApi_Exception_BadRequest('版本号格式错误');
+        }
+        return $value;
+    }
+}
+```
+
+> 温馨提示：回调函数的签名为：```function format($value, $rule, $params)```，第一个为参数原始值，第二个为所配置的规则，第三个可选参数为配置规则中的params选项。最后应返回转换后的参数值。  
+  
+还记得我们前面刚学的三级参数规则吗？虽然在应用参数配置中已配置公共version参数规则，但我们可以在具体的接口类中重新配置这个规则。把在Hello World接口中把这个版本参数类型修改成此自定义回调类型。即：  
+```
+// $ vim ./Shop/Api/Welcome.php     
+class Api_Welcome extends PhalApi_Api {
+
+    public function getRules() {
+        return array(
+            'say' => array(
+                'version' => array('name' => 'version', 'type' => 'callable', 'callback' => 'Common_Request_Version::formatVersion'),
+            )
+        );
+    }
+... ...
+```
+修改好后，便可使用此自定义的回调处理了。当正常传递合法version参数，如请求```/shop/welcome/say?version=1.2.3```，可以正常响应。若故意传递非法的version参数，如请求```/shop/welcome/say?version=123```，则会提示这样的错误：  
+```
+"msg": "非法请求：版本号格式错误"
+```
+  
+由于自 PHP 5.4 起可用callable类型指定回调类型callback。所以，为了减轻记忆的负担，这里使用callable或者callback来表示类型都可以，即可以配置成：```'type' => 'callable',```，也可以配置成：```'type' => 'callback',```。回调函数的选项也一样。  
+
+  
+以下是来自PHP官网的一些回调函数的示例：  
+```
+// Type 1: Simple callback
+call_user_func('my_callback_function'); 
+
+// Type 2: Static class method call
+call_user_func(array('MyClass', 'myCallbackMethod')); 
+
+// Type 3: Object method call
+$obj = new MyClass();
+call_user_func(array($obj, 'myCallbackMethod'));
+
+// Type 4: Static class method call (As of PHP 5.2.3)
+call_user_func('MyClass::myCallbackMethod');
+```
+> 参考：更多请参考[Callback / Callable 类型](http://php.net/manual/zh/language.types.callable.php)。  
+
+所以上面的callback也可以配置成：  
+```
+'callback' => array('Common_Request_Version', 'formatVersion')
+```
+
+
+### 2.2.3 过滤器与签名验证
+
+#### (1) 如何开启过滤器进行签名验证？  
+当需要开启过滤器，只需要注册```DI()->filter```即可。在初始化文件init.php中去掉以下注释便可启用默认的签名验证服务。  
+```
+// $ vim ./Public/init.php
+// 签名验证服务
+DI()->filter = 'PhalApi_Filter_SimpleMD5';
+```
+这里的过滤器是指PhalApi在具体接口服务前所执行的过程，主要用于签名验证或实现其他预加载处理的功能。  
+
+### (2) 默认的签名方案
+PhalApi提供了一个默认签名验证方案，主要是基于md5的签名生成。这个只是作为一般性的参考，在实际项目开发中，我们应该在此基础上进行调整延伸。  
+  
+其默认验签的算法如下：   
+
+ + 1、排除签名参数（默认是sign）
+ + 2、将剩下的全部参数，按参数名字进行字典排序
+ + 3、将排序好的参数，全部用字符串拼接起来
+ + 4、进行md5运算
+ + 5、追加签名参数  
+
+如前面我们看到的，除了配置公共参数规则version外，我们还配置了公共参数规则sign。此sign参数则主要用于这里的签名验证。下面是一个具体的例子。  
+
+假设请求的接口服务链接是：  
+```
+/shop/?service=Welcome.Say&version=1.2.3
+```
+ 
+则会按以下方式生成并验证签名。  
+
+ + 1、排除签名参数（默认是sign）
+```
+?service=Welcome.Say&version=1.2.3
+```
+
+ + 2、将剩下的全部参数，按参数名字进行字典排序
+```
+service=Welcome.Say
+version=1.2.3
+```
+
+ + 3、将排序好的参数，全部用字符串拼接起来
+```
+"Welcome.Say1.2.3" = "Welcome.Say" + "1.2.3"
+```
+
+ + 4、进行md5运算
+```
+35321cc43cfc1e4008bf6f1bf = md5("Welcome.Say1.2.3")
+```
+
+ + 5、追加签名参数   
+```
+?service=Default.Index&username=dogstar&sign=35321cc43cfc1e4008bf6f1bf
+```
+
+开启默认签名后，需要按以上算法生成签名sign，并且在每次请求接口服务时加上此参数。在缺少签名或者签名错误情况下，会提示类似以下的错误。  
+```
+{
+    "ret": 406,
+    "data": [],
+    "msg": "非法请求：签名错误"
+}
+```
+
+#### (3) 接口服务白名单配置
+细心的读者会发现，对于默认的接口服务Default.Index是不需要进行签名验证的，这是因为在接口服务白名单中进行了配置。对于配置了白名单的接口服务，将不会触发过滤器的调用。  
+
+接口服务白名单配置是：```app.service_whitelist```，即配置文件```./Config/app.php```里面的```service_whitelist```配置，其默认值是：  
+```
+    'service_whitelist' => array(
+        'Default.Index',
+    ),
+```
+配置的格式有以下四种。  
+
+类型|配置格式|匹配规则|示例及说明  
+---|---|---|---  
+全部|```*.*```|匹配全部接口服务（慎用！）|如果配置了此规则，即全部的接口服务都不触发过滤器。  
+方法通配|```Default.*```|匹配某个类的任何方法|即Api_Default接口类的全部方法  
+类通配|```*.Index```|匹配全部接口类的某个方法|即全部接口类的Index方法  
+具体匹配|```Default.Index```|匹配指定某个接口服务|即Api_Default::Index()  
+  
+表2-4 接口服务白名单匹配类型
+
+如果有多个生效的规则，按短路判断原则，即有任何一个白名单规则匹配后就跳过验证，不触发过滤器。  
+  
+以下是更多的示例：  
+```
+    'service_whitelist' => array(
+        '*.Index',           // 全部的Index方法
+        'Test.*',            // Api_Test的全部方法
+        'User.GetBaseInfo',  // Api_User::GetBaseInfo()方法
+    ),
+```
+配置好上面的白名单后，以下这些接口服务全部不会触发过滤器：  
+```
+// 全部的Index方法
+?service=Default.Index
+?service=User.Index
+
+// Api_Test的全部方法
+?service=Test.DoSth
+?service=Test.Hello
+?service=Test.GOGOGO
+
+// Api_User::GetBaseInfo()方法
+?service=User.GetBaseInfo
+```
+
+### 2.2.4 扩展你的项目
+
+#### (1) 如何定制接口服务的传递方式？
+虽然我们约定统一使用```?service=Class.Action```的格式来传递接口服务名称，但如果项目有需要，也可以采用其他方式来传递。例如使用斜杠而非点号进行分割：```?service=Class/Action```，再进一步，使用r参数，即最终接口服务的参数格式为：```?r=Class/Action```。  
+
+如果需要采用其他传递接口服务名称的方式，则可以重载```PhalApi_Request::getService()```方法。以下是针对改用斜杠分割、并换用r参数名字的实现示例：  
+```
+// $ vim ./Shop/Common/Request/Ch1.php
+<?php
+
+class Common_Request_Ch1 extends PhalApi_Request {
+
+    public function getService() {
+        // 优先返回自定义格式的接口服务名称
+        $servcie = $this->get('r');
+        if (!empty($servcie)) {
+            return str_replace('/', '.', $servcie);
+        }
+
+        return parent::getService();
+    }
+}
+```
+
+实现好自定义的请求类后，需要在项目的入口文件```./Public/shop/index.php```进行注册。  
+```
+// $ vim ./Public/shop/index.php
+//装载你的接口
+DI()->loader->addDirs('Shop');
+
+DI()->request = new Common_Request_Ch1();
+```
+
+这样，除了原来的请求方式，还可以这样请求接口服务。  
+
+
+原来的方式|现在的方式
+---|---
+/shop/?service=Default.Index|?r=Default/Index   
+/shop/?service=Welcome.Say|?r=Welcome.Say   
+
+表2-5 使用?r=Class/Action格式定制后的方式
+
+这里有几个注意事项： 
+
+ + 1、重载后的方法需要转换为原始的接口服务格式，即：Class.Action  
+ + 2、为保持兼容性，子类需兼容父类的实现。即在取不到自定义的接口服务名称参数时，应该返回原来的接口服务。  
+
+除了在框架编写代码实现其他接口服务的传递方式外，还可以通过Web服务器的规则Rewirte来实现。假设使用的是Nginx服务器，那么可以添加以下Rewrite配置。  
+```
+    if ( !-f $request_filename )
+    {
+        rewrite ^/shop/(.*)/(.*) /shop/?service=$1.$2;
+    }
+```
+重启Nginx后，便可得到以下这样的效果。  
+
+原来的方式|现在的方式
+---|---
+/shop/?service=Default.Index|/shop/default/index   
+/shop/?service=Welcome.Say|/shop/welcome/say  
+  
+表2-6 使用Nginx服务器Rewrite规则定制后的方式
+
+此外，还有第三种指定传递方式的方案。使用第三方路由规则类库，然后通过简单的项目配置，从而实现更复杂、更丰富的规则定制。这部分后面会再进行讨论。  
+
+小结一下，不管是哪种定制方式，最终都是转换为框架最初约定的方式，即：```?service=Class.Action```。  
+
+#### (2) 更自由的数据源
+何为数据源？这里说的数据源是指PhalApi从客户端接收参数的来源，主要分为三种：主数据源、备用数据源、其他数据源。下面分别对这三种数据源进行介绍，以及如何扩展定制。  
+
+ + **如何指定主数据源？**  
+
+主数据源是指作为默认接口参数来源的数据源，即在配置了接口参数规则后，PhalApi会比主数据源提取相应的参数从而进行验证、检测和转换等。默认情况下，使用$_REQUEST作为主数据源，即同时支持$_GET和$_POST参数。但在其他场景如单元测试，或者使用非HTTP/HTTPS协议时，则需要定制主数据源，以便切换到其他的途径。  
+
+指定主数据源有两种方式，一种是简单地在初始化DI()->request请求服务时通过PhalApi_Request的构造函数参数来指定。例如，假设要强制全部参数使用POST方式，那么可以：  
+```
+//vim ./Public/index.php
+DI()->request = new PhalApi_Request($_POST); 
+```
+
+又或者，在单元测试中，我们经常看到这样的使用场景：  
+```
+// 模拟测试数据
+$data = array(...);
+DI()->request = new PhalApi_Request($data);
+```
+这样，就可以很方便模拟构造一个接口服务请求的上下文环境，便于模拟进行请求。  
+
+
+另一种方式是稍微复杂一点的，是为了应对更复杂的业务场景，例如出于安全性考虑需要对客户端的数据包进行解密。这时需要重载并实现```PhalApi_Request::genData($data)```方法。其中参数```$data```即上面的构造函数参数，未指定时为NULL。    
+
+假设，我们现在需要把全部的参数base64编码序列化后通过$_POST['data']来传递，则相应的解析代码如下。首先，先定义自己的扩展请求类，在里面完成对称解析的动作：  
+```
+<?php
+class Common_Request_Base64Data extends PhalApi_Request {
+
+    public function genData($data) {
+        if (!isset($data) || !is_array($data)) {
+            $data = $_POST; //改成只接收POST
+        }
+
+        return isset($data['data']) ? base64_decode($data['data']) : array();
+    }
+}
+```
+接着在./Public/shop/index.php项目入口文件中重新注册请求类，即添加以下代码。  
+```
+//重新注册request
+DI()->request = 'Common_Request_Base64Data'; 
+```
+
+然后，就可以轻松实现了接口参数的对称加密传送。至此，便可完成定制工作。  
+
+ + **如何定制备用数据源？**  
+
+备用数据源比较多，在前面介绍参数规则时已经提及和介绍，可以是：$_POST、$_GET、$_COOKIE、$_SERVER、$_REQUEST、HTTP头部信息。当某个接口参数需要使用非主数据源的备用数据源时，便可以使用source选项进行配置。  
+
+备用数据源与PhalApi_Request类成员属性的映射关系为：  
+
+类成员属性|对应的数据源  
+---|---
+$this->post     | $_POST              
+$this->get      | $_GET   
+$this->request  | $_REQUEST           
+$this->header   | $_SERVER['HTTP_X']              
+$this->cookie   | $_COOKIE                   
+
+表2-6 备用数据源与PhalApi_Request类成员属性的映射关系  
+  
+当需要对这些备用数据源进行定制时，可以重装并实现PhalApi_Request类的构造函数，在完成对父类的初始化后，再补充具体的初始化过程。如对于需要使用post_raw数据作为POST数据的情况，可以：  
+```
+<?php
+class My_Request_PostRaw extends PhalApi_Request{
+    public function __construct($data = NULL) {
+        parent::__construct($data);
+
+        $this->post = json_decode(file_get_contents('php://input'), TRUE);    
+    }  
+}
+```
+以此类推，还可以定制```$this->get```，```$this->request```等其他备用数据源，比如进行一些前置的XSS过滤。  
+
+最后，在接口参数规则配置时，便可使用source配置来定制后的备用数据源。如指定用户在登录时，用户名使用$_GET、密码使用$_POST。  
+```
+public function getRules() {
+    return array(
+        'login' => array(
+            'username' => array('name' => 'username', 'source' => 'get'),
+            'password' => array('name' => 'password', 'source' => 'post'),
+        ),  
+    );
+}
+```
+这样，PhalApi框架就会从$_GET中提取```username```参数，从$_POST中提取```password```参数。
+
+ + **如何扩展其他数据源？**  
+
+其他数据源是除了上面的主数据源和备用数据源以外的数据源。当需要使用其他途径的数据源时，可进行扩展支持。  
+
+若需要扩展项目自定义的映射关系，则可以重载```PhalApi_Request::getDataBySource($source)```方法，如：  
+```
+// $ vim ./Shop/Common/Request/Stream.php
+<?php
+class My_Request_Stream extends PhalApi_Request {
+
+    protected function &getDataBySource($source) {
+        if (strtoupper($source) == 'stream') {
+            // TODO 处理二进制流
+        }
+
+        return parent::getDataBySource($source);
+    }
+}
+
+```
+然后，便可在项目中这样配置使用二进制流的数据源。  
+```
+// 从二进制流中获取密码
+'password' => array('name' => 'password', 'source' => 'stream'),
+```
+
+#### (3) 添加新的参数类型
+当PhalApi提供的参数类型不能满足项目接口参数的规则验证时，除了使用callable回调类型外，还可以扩展PhalApi_Request_Formatter接口来定制项目需要的参数类型。  
+  
+和前面的定制类似，主要分两步：  
+ + 第1步、扩展实现PhalApi_Request_Formatter接口
+ + 第2步、在DI注册新的参数类型
+  
+下面以大家所熟悉的邮件类型为例，说明扩展的步骤。  
+  
+首先，我们需要一个实现了邮件类型验证的功能类：  
+```
+// vim ./Shop/Common/Request/Email.php
+<?php
+class Common_Request_Email implements PhalApi_Request_Formatter {
+
+	public function parse($value, $rule) {
+		if (!preg_match('/^(\w)+(\.\w+)*@(\w)+((\.\w+)+)$/', $value)) {
+			throw new PhalApi_Exception_BadRequest('邮箱地址格式错误');
+		}
+
+		return $value;
+	}
+}  
+```
+  
+然后，在项目入口文件进行注册。注册时，服务名称格式为：_formatter + 参数类型名称（首字母大写，其他字母小写），即：  
+```
+// $ vim ./Public/shop/index.php
+DI()->_formatterEmail = 'Common_Request_Email';
+```
+若不想手动注册，希望可以自动注册，扩展的类名格式须为：PhalApi_Request_Formatter_{类型名称}。  
+
+最后，就可以像其他类型那样使用自己定制的参数类型了。新的参数类型为email，即：```'type' => 'email',```。
+```
+array('name' => 'user_email', 'type' => 'email')
+```
+   
+此外，PhalApi框架已自动注册的格式化服务有：  
+
+参数类型|DI服务名称|说明
+---|---|---
+string|_formatterString| 字符串格式化服务
+int|_formatterInt| 整数格式化服务
+float|_formatterFloat| 浮点数格式化服务
+boolean|_formatterBoolean| 布尔值格式化服务
+date|_formatterDate| 日期格式化服务
+array|_formatterArray| 数组格式化服务
+enum|_formatterEnum| 枚举格式化服务
+file|_formatterFile| 上传文件格式化服务
+callable|_formatterCallable| 回调格式化服务
+callback|_formatterCallback| 回调格式化服务
+ 
+表2-7 内置参数类型格式化服务
+
+在实现扩展新的参数类型时，不应覆盖已有的格式化服务。  
+
+#### (4) 实现项目专属的签名方案
+
+正如前面所说，项目应该实现自己专属的签名方案，以识别是合法的接口请求。当需要实现签名验证时，只需要简单的两步即可：  
+
+
+ + 第1步、实现过滤器接口```PhalApi_Filter::check()```
+ + 第2步、注册过滤器服务```DI()->filter```
+
+现以大家熟悉的微信公众号开发平台的验签为例，进行说明。  
+
+微信的加密/校验流程如下：  
+```
+1. 将token、timestamp、nonce三个参数进行字典序排序
+2. 将三个参数字符串拼接成一个字符串进行sha1加密
+3. 开发者获得加密后的字符串可与signature对比，标识该请求来源于微信
+```
+> 参考：以上内容摘自[接入指南 - 微信公众平台开发者文档](http://mp.weixin.qq.com/wiki/17/2d4265491f12608cd170a95559800f2d.html)。  
+
+首先，需要实现过滤器接口```PhalApi_Filter::check()```。通常我们约定返回ret = 402时表示验证失败，所以当签名失败时，我们可以返回ret = 402以告知客户端签名不对。根据微信的检验signature的PHP示例代码，我们可以快速实现自定义签名规则，如：
+```
+//$ vim ./Shop/Common/Request/WeiXinFilter.php
+<?php
+
+class Common_Request_WeiXinFilter implements PhalApi_Filter {
+
+    public function check() {
+        $signature = DI()->request->get('signature');
+        $timestamp = DI()->request->get('timestamp');
+        $nonce = DI()->request->get('nonce');
+
+        $token = 'Your Token Here ...'; // TODO
+        $tmpArr = array($token, $timestamp, $nonce);
+        sort($tmpArr, SORT_STRING);
+        $tmpStr = implode($tmpArr);
+        $tmpStr = sha1( $tmpStr );
+
+        if ($tmpStr != $signature) {
+            throw new PhalApi_Exception_BadRequest('wrong sign', 1);
+        }
+    }
+}
+
+```
+
+随后，我们只需要再简单地注册一下过滤器服务即可，在对应项目的入口文件index.php中添加：  
+```
+//$ vim ./Public/shop/index.php 
+// 微信签名验证服务
+DI()->filter = 'Common_Request_WeiXinFilter';
+```
+  
+当我们再次请求接口时，此时的签名方案就会从原来默认的md5加密算法切换到这个新的签名验证方案上。实现的要点是，当签名失败时，抛出401错误码。而异常类PhalApi_Exception_BadRequest表示客户端非法请求，其异常码的基数是400，所以第二个构造函数参数传1即可。  
