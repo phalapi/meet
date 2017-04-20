@@ -903,6 +903,61 @@ class My_Request_Stream extends PhalApi_Request {
 ```
 
 #### (3) 添加新的参数类型
+当PhalApi提供的参数类型不能满足项目接口参数的规则验证时，除了使用callable回调类型外，还可以扩展PhalApi_Request_Formatter接口来定制项目需要的参数类型。  
+  
+和前面的定制类似，主要分两步：  
+ + 第1步、扩展实现PhalApi_Request_Formatter接口
+ + 第2步、在DI注册新的参数类型
+  
+下面以大家所熟悉的邮件类型为例，说明扩展的步骤。  
+  
+首先，我们需要一个实现了邮件类型验证的功能类：  
+```
+// vim ./Shop/Common/Request/Email.php
+<?php
+class Common_Request_Email implements PhalApi_Request_Formatter {
+
+	public function parse($value, $rule) {
+		if (!preg_match('/^(\w)+(\.\w+)*@(\w)+((\.\w+)+)$/', $value)) {
+			throw new PhalApi_Exception_BadRequest('邮箱地址格式错误');
+		}
+
+		return $value;
+	}
+}  
+```
+  
+然后，在项目入口文件进行注册。注册时，服务名称格式为：_formatter + 参数类型名称（首字母大写，其他字母小写），即：  
+```
+// $ vim ./Public/shop/index.php
+DI()->_formatterEmail = 'Common_Request_Email';
+```
+若不想手动注册，希望可以自动注册，扩展的类名格式须为：PhalApi_Request_Formatter_{类型名称}。  
+
+最后，就可以像其他类型那样使用自己定制的参数类型了。新的参数类型为email，即：```'type' => 'email',```。
+```
+array('name' => 'user_email', 'type' => 'email')
+```
+   
+此外，PhalApi框架已自动注册的格式化服务有：  
+
+参数类型|DI服务名称|说明
+---|---|---
+string|_formatterString| 字符串格式化服务
+int|_formatterInt| 整数格式化服务
+float|_formatterFloat| 浮点数格式化服务
+boolean|_formatterBoolean| 布尔值格式化服务
+date|_formatterDate| 日期格式化服务
+array|_formatterArray| 数组格式化服务
+enum|_formatterEnum| 枚举格式化服务
+file|_formatterFile| 上传文件格式化服务
+callable|_formatterCallable| 回调格式化服务
+callback|_formatterCallback| 回调格式化服务
+ 
+表2-7 内置参数类型格式化服务
+
+在实现扩展新的参数类型时，不应覆盖已有的格式化服务。  
+
 #### (4) 实现项目专属的签名方案
 
 ## 2.2 响应结构与返回格式
