@@ -839,6 +839,7 @@ DI()->request = 'Common_Request_Base64Data';
 备用数据源比较多，在前面介绍参数规则时已经提及和介绍，可以是：$_POST、$_GET、$_COOKIE、$_SERVER、$_REQUEST、HTTP头部信息。当某个接口参数需要使用非主数据源的备用数据源时，便可以使用source选项进行配置。  
 
 备用数据源与PhalApi_Request类成员属性的映射关系为：  
+
 类成员属性|对应的数据源  
 ---|---
 $this->post     | $_POST              
@@ -901,20 +902,22 @@ class My_Request_Stream extends PhalApi_Request {
 'password' => array('name' => 'password', 'source' => 'stream'),
 ```
 
-
-#### (3) 添加新的参数规则
+#### (3) 添加新的参数类型
 #### (4) 实现项目专属的签名方案
 
 ## 2.2 响应结构与返回格式
-### 响应结构
-### 返回格式
-### 在线调试
+### 2.2.1 响应结构
+### 2.2.2 返回格式
+### 2.2.3 在线调试
+### 扩展你的项目
+#### (1) 调整响应结构
+#### (2) 使用其他返回格式
 
 ## 2.3 细说ADM模式
 ### 何为Api-Domain-Model模式？
-### Api接口服务层
-### Domain领域业务层
-### Model数据模型层
+### 抽象的Api接口服务层
+### 专注的Domain领域业务层
+### 广义的Model数据模型层
 
 ## 2.4 配置  
 前提
