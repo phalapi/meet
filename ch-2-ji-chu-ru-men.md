@@ -524,6 +524,7 @@ array(
 > 温馨提示：文件上传时请使用表单上传，并enctype 属性使用"multipart/form-data"。具体请参考：[PHP 文件上传](http://www.w3school.com.cn/php/php_file_upload.asp)  
   
  + **回调 callable/callback**  
+
 当需要利用已有函数进行自定义验证时，可采用回调参数规则，如配置规则：  
 
 ```
@@ -555,8 +556,7 @@ class Common_Request_Version {
             'name' => 'version', 'type' => 'callable', 'callback' => array('Common_Request_Version', 'formatVersion'), 'default' => '1.4.0'
         )
 ```
-修改好后，便可使用此自定义的回调处理了。  
-当正常传递合法version参数，如请求```/shop/welcome/say?version=1.2.3```，可以正常响应。若故意传递非法的version参数，如请求```/shop/welcome/say?version=123```，则会提示这样的错误：  
+修改好后，便可使用此自定义的回调处理了。当正常传递合法version参数，如请求```/shop/welcome/say?version=1.2.3```，可以正常响应。若故意传递非法的version参数，如请求```/shop/welcome/say?version=123```，则会提示这样的错误：  
 ```
 "msg": "非法请求：版本号格式错误"
 ```
