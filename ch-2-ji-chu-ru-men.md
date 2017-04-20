@@ -960,6 +960,57 @@ callback|_formatterCallback| 回调格式化服务
 
 #### (4) 实现项目专属的签名方案
 
+正如前面所说，项目应该实现自己专属的签名方案，以识别是合法的接口请求。当需要实现签名验证时，只需要简单的两步即可：  
+
+
+ + 第1步、实现过滤器接口```PhalApi_Filter::check()```
+ + 第2步、注册过滤器服务```DI()->filter```
+
+现以大家熟悉的微信公众号开发平台的验签为例，进行说明。  
+
+微信的加密/校验流程如下：  
+```
+1. 将token、timestamp、nonce三个参数进行字典序排序
+2. 将三个参数字符串拼接成一个字符串进行sha1加密
+3. 开发者获得加密后的字符串可与signature对比，标识该请求来源于微信
+```
+> 参考：以上内容摘自[接入指南 - 微信公众平台开发者文档](http://mp.weixin.qq.com/wiki/17/2d4265491f12608cd170a95559800f2d.html)。  
+
+首先，需要实现过滤器接口```PhalApi_Filter::check()```。通常我们约定返回ret = 402时表示验证失败，所以当签名失败时，我们可以返回ret = 402以告知客户端签名不对。根据微信的检验signature的PHP示例代码，我们可以快速实现自定义签名规则，如：
+```
+//$ vim ./Shop/Common/Request/WeiXinFilter.php
+<?php
+
+class Common_Request_WeiXinFilter implements PhalApi_Filter {
+
+    public function check() {
+        $signature = DI()->request->get('signature');
+        $timestamp = DI()->request->get('timestamp');
+        $nonce = DI()->request->get('nonce');
+
+        $token = 'Your Token Here ...'; // TODO
+        $tmpArr = array($token, $timestamp, $nonce);
+        sort($tmpArr, SORT_STRING);
+        $tmpStr = implode($tmpArr);
+        $tmpStr = sha1( $tmpStr );
+
+        if ($tmpStr != $signature) {
+            throw new PhalApi_Exception_BadRequest('wrong sign', 1);
+        }
+    }
+}
+
+```
+
+随后，我们只需要再简单地注册一下过滤器服务即可，在对应项目的入口文件index.php中添加：  
+```
+//$ vim ./Public/shop/index.php 
+// 微信签名验证服务
+DI()->filter = 'Common_Request_WeiXinFilter';
+```
+  
+当我们再次请求接口时，此时的签名方案就会从原来默认的md5加密算法切换到这个新的签名验证方案上。实现的要点是，当签名失败时，抛出401错误码。而异常类PhalApi_Exception_BadRequest表示客户端非法请求，其异常码的基数是400，所以第二个构造函数参数传1即可。  
+
 ## 2.2 响应结构与返回格式
 ### 2.2.1 响应结构
 ### 2.2.2 返回格式
