@@ -253,7 +253,7 @@ return array(
 数组|array|TRUE/FALSE，默认FALSE|字符串或者数组，为非数组会自动转换/解析成数组|可选，判断数组元素个数|format选项用于配置数组和格式，为explode时根据separator选项将字符串分割成数组, 为json时进行JSON解析
 枚举|enum|TRUE/FALSE，默认FALSE|应为range选项中的某个元素|---|必须的range选项，为一数组，用于指定枚举的集合
 文件|file|TRUE/FALSE，默认FALSE|数组类型|可选，用于表示文件大小范围，单位为B|range选项用于指定可允许上传的文件类型；ext选项用于表示需要过滤的文件扩展名
-回调|callable|TRUE/FALSE，默认FALSE|---|---|callback选项用于设置回调函数，params选项为回调函数的第三个参数（另外第一个为参数值，第二个为所配置的规则）  
+回调|callable/callback|TRUE/FALSE，默认FALSE|---|---|callable/callback选项用于设置回调函数，params选项为回调函数的第三个参数（另外第一个为参数值，第二个为所配置的规则）  
 
 表2-2 参数规则选项一览表  
 
@@ -387,6 +387,10 @@ array('name' => 'register_date', 'type' => 'date', 'format' => 'timestamp')
 array('name' => 'register_date', 'type' => 'date', 'format' => 'timestamp', 'min' =>  1422633600, 'max' => 1422719999)
 ```
 
+当配置的最小值或最大值为字符串的日期时，会自动先转换成时间戳再进行检测比较。如可以配置成：  
+```
+array('name' => 'register_date', ... ... 'min' => '2015-01-31 00:00:00', 'max' => '2015-01-31 23:59:59')
+```
 
  + **数组 array**  
 
@@ -519,7 +523,7 @@ array(
 
 > 温馨提示：文件上传时请使用表单上传，并enctype 属性使用"multipart/form-data"。具体请参考：[PHP 文件上传](http://www.w3school.com.cn/php/php_file_upload.asp)  
   
- + **回调 callable**  
+ + **回调 callable/callback**  
 当需要利用已有函数进行自定义验证时，可采用回调参数规则，如配置规则：  
 
 ```
@@ -535,33 +539,53 @@ class Common_Request_Version {
         if (count(explode('.', $value)) < 3) {
             throw new PhalApi_Exception_BadRequest('版本号格式错误');
         }
+        return $value;
     }
 }
 ```
-> 温馨提示：回调函数的第一个为参数原始值，第二个为所配置的规则，第三个可选参数为配置规则中的params选项。  
 
+> 温馨提示：回调函数的签名为：```function format($value, $rule, $params)```，第一个为参数原始值，第二个为所配置的规则，第三个可选参数为配置规则中的params选项。最后应返回转换后的参数值。  
+  
 还记得我们前面刚学的应用参数规则吗？在那里我们配置了一个version参数，现在让我们把这个版本参数类型修改成此自定义回调类型。即：  
 ```
 // $ vim ./Config/app.php
         ... ...
         'version' => array(
             // 'name' => 'version', 'default' => '1.4.0', , 
-            'name' => 'version', 'type' => 'callable', 'callback' => array('Common_Request_Version', 'formatVersion')
+            'name' => 'version', 'type' => 'callable', 'callback' => array('Common_Request_Version', 'formatVersion'), 'default' => '1.4.0'
         )
 ```
-修改好后，先修改Shop项目中的用户登录接口，并追加转换后的version参数返回。  
+修改好后，便可使用此自定义的回调处理了。  
+当正常传递合法version参数，如请求```/shop/welcome/say?version=1.2.3```，可以正常响应。若故意传递非法的version参数，如请求```/shop/welcome/say?version=123```，则会提示这样的错误：  
 ```
-    public function login() {
-        return array(
-            'username' => $this->username, 
-            'password' => $this->password, 
-            'version' => $this->version
-        );
-    }
+"msg": "非法请求：版本号格式错误"
 ```
-然后，再次试着用合法的version参数调用此接口服务，如：
+  
+由于自 PHP 5.4 起可用callable类型指定回调类型callback。所以，为了减轻记忆的负担，这里使用callable或者callback来表示类型都可以，即可以配置成：```'type' => 'callable',```，也可以配置成：```'type' => 'callback',```。回调函数的选项也一样。  
 
   
+以下是来自PHP官网的一些回调函数的示例：  
+```
+// Type 1: Simple callback
+call_user_func('my_callback_function'); 
+
+// Type 2: Static class method call
+call_user_func(array('MyClass', 'myCallbackMethod')); 
+
+// Type 3: Object method call
+$obj = new MyClass();
+call_user_func(array($obj, 'myCallbackMethod'));
+
+// Type 4: Static class method call (As of PHP 5.2.3)
+call_user_func('MyClass::myCallbackMethod');
+```
+> 参考：更多请参考[Callback / Callable 类型](http://php.net/manual/zh/language.types.callable.php)。  
+
+所以上面的callback也可以配置成：  
+```
+'callback' => 'Common_Request_Version::formatVersion'
+```
+
 
 ### 2.2.3 过滤器与签名验证
 ### 2.2.4 扩展你的项目
