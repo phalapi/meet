@@ -293,6 +293,23 @@ header   | $_SERVER['HTTP_X']
 
 表2-3 source与对应的数据源映射关系  
   
+通过source参数可以轻松、更自由获取不同来源的参数。以下是一些常用的配置示例。  
+```
+// 获取HTTP请求方法，判断是POST还是GET
+'method' => array('name' => 'REQUEST_METHOD', 'source' => 'server'),
+
+// 获取COOKIE中的标识
+'is_new_user' => array('name' => 'is_new_user', 'source' => 'cookie'),
+
+// 获取HTTP头部中的编码，判断是否为utf-8
+'charset' => array('name' => 'Accept-Charset', 'source' => 'header'),
+```
+
+若配置的source为无效或非法时，则会抛出异常。如配置了```'source' => 'NOT_FOUND'```，会得到：     
+```
+"msg": "服务器运行错误: 参数规则中未知的数据源：NOT_FOUND"
+```
+
 ##### 9种参数类型
 
 对于各种参数类型，结合示例说明如下。  
@@ -676,6 +693,8 @@ version=1.2.3
 类通配|```*.Index```|匹配全部接口类的某个方法|即全部接口类的Index方法  
 具体匹配|```Default.Index```|匹配指定某个接口服务|即Api_Default::Index()  
   
+表2-4 接口服务白名单匹配类型
+
 如果有多个生效的规则，按短路判断原则，即有任何一个白名单规则匹配后就跳过验证，不触发过滤器。  
   
 以下是更多的示例：  
@@ -742,7 +761,7 @@ DI()->request = new Common_Request_Ch1();
 /shop/?service=Default.Index|?r=Default/Index   
 /shop/?service=Welcome.Say|?r=Welcome.Say   
 
-表2- 使用?r=Class/Action格式定制后的方式
+表2-5 使用?r=Class/Action格式定制后的方式
 
 这里有几个注意事项： 
 
@@ -763,13 +782,126 @@ DI()->request = new Common_Request_Ch1();
 /shop/?service=Default.Index|/shop/default/index   
 /shop/?service=Welcome.Say|/shop/welcome/say  
   
-表2- 使用Nginx服务器Rewrite规则定制后的方式
+表2-6 使用Nginx服务器Rewrite规则定制后的方式
 
 此外，还有第三种指定传递方式的方案。使用第三方路由规则类库，然后通过简单的项目配置，从而实现更复杂、更丰富的规则定制。这部分后面会再进行讨论。  
 
-小结一下，不管是哪种定制方式，最终都是转换为框架最初约定的方式，即：```?service=Class/Action```。  
+小结一下，不管是哪种定制方式，最终都是转换为框架最初约定的方式，即：```?service=Class.Action```。  
 
 #### (2) 更自由的数据源
+何为数据源？这里说的数据源是指PhalApi从客户端接收参数的来源，主要分为三种：主数据源、备用数据源、其他数据源。下面分别对这三种数据源进行介绍，以及如何扩展定制。  
+
+ + **如何指定主数据源？**  
+
+主数据源是指作为默认接口参数来源的数据源，即在配置了接口参数规则后，PhalApi会比主数据源提取相应的参数从而进行验证、检测和转换等。默认情况下，使用$_REQUEST作为主数据源，即同时支持$_GET和$_POST参数。但在其他场景如单元测试，或者使用非HTTP/HTTPS协议时，则需要定制主数据源，以便切换到其他的途径。  
+
+指定主数据源有两种方式，一种是简单地在初始化DI()->request请求服务时通过PhalApi_Request的构造函数参数来指定。例如，假设要强制全部参数使用POST方式，那么可以：  
+```
+//vim ./Public/index.php
+DI()->request = new PhalApi_Request($_POST); 
+```
+
+又或者，在单元测试中，我们经常看到这样的使用场景：  
+```
+// 模拟测试数据
+$data = array(...);
+DI()->request = new PhalApi_Request($data);
+```
+这样，就可以很方便模拟构造一个接口服务请求的上下文环境，便于模拟进行请求。  
+
+
+另一种方式是稍微复杂一点的，是为了应对更复杂的业务场景，例如出于安全性考虑需要对客户端的数据包进行解密。这时需要重载并实现```PhalApi_Request::genData($data)```方法。其中参数```$data```即上面的构造函数参数，未指定时为NULL。    
+
+假设，我们现在需要把全部的参数base64编码序列化后通过$_POST['data']来传递，则相应的解析代码如下。首先，先定义自己的扩展请求类，在里面完成对称解析的动作：  
+```
+<?php
+class Common_Request_Base64Data extends PhalApi_Request {
+
+    public function genData($data) {
+        if (!isset($data) || !is_array($data)) {
+            $data = $_POST; //改成只接收POST
+        }
+
+        return isset($data['data']) ? base64_decode($data['data']) : array();
+    }
+}
+```
+接着在./Public/shop/index.php项目入口文件中重新注册请求类，即添加以下代码。  
+```
+//重新注册request
+DI()->request = 'Common_Request_Base64Data'; 
+```
+
+然后，就可以轻松实现了接口参数的对称加密传送。至此，便可完成定制工作。  
+
+ + **如何定制备用数据源？**  
+
+备用数据源比较多，在前面介绍参数规则时已经提及和介绍，可以是：$_POST、$_GET、$_COOKIE、$_SERVER、$_REQUEST、HTTP头部信息。当某个接口参数需要使用非主数据源的备用数据源时，便可以使用source选项进行配置。  
+
+备用数据源与PhalApi_Request类成员属性的映射关系为：  
+类成员属性|对应的数据源  
+---|---
+$this->post     | $_POST              
+$this->get      | $_GET   
+$this->request  | $_REQUEST           
+$this->header   | $_SERVER['HTTP_X']              
+$this->cookie   | $_COOKIE                   
+
+表2-6 备用数据源与PhalApi_Request类成员属性的映射关系  
+  
+当需要对这些备用数据源进行定制时，可以重装并实现PhalApi_Request类的构造函数，在完成对父类的初始化后，再补充具体的初始化过程。如对于需要使用post_raw数据作为POST数据的情况，可以：  
+```
+<?php
+class My_Request_PostRaw extends PhalApi_Request{
+    public function __construct($data = NULL) {
+        parent::__construct($data);
+
+        $this->post = json_decode(file_get_contents('php://input'), TRUE);    
+    }  
+}
+```
+以此类推，还可以定制```$this->get```，```$this->request```等其他备用数据源，比如进行一些前置的XSS过滤。  
+
+最后，在接口参数规则配置时，便可使用source配置来定制后的备用数据源。如指定用户在登录时，用户名使用$_GET、密码使用$_POST。  
+```
+public function getRules() {
+    return array(
+        'login' => array(
+            'username' => array('name' => 'username', 'source' => 'get'),
+            'password' => array('name' => 'password', 'source' => 'post'),
+        ),  
+    );
+}
+```
+这样，PhalApi框架就会从$_GET中提取```username```参数，从$_POST中提取```password```参数。
+
+ + **如何扩展其他数据源？**  
+
+其他数据源是除了上面的主数据源和备用数据源以外的数据源。当需要使用其他途径的数据源时，可进行扩展支持。  
+
+若需要扩展项目自定义的映射关系，则可以重载```PhalApi_Request::getDataBySource($source)```方法，如：  
+```
+// $ vim ./Shop/Common/Request/Stream.php
+<?php
+class My_Request_Stream extends PhalApi_Request {
+
+    protected function &getDataBySource($source) {
+        if (strtoupper($source) == 'stream') {
+            // TODO 处理二进制流
+        }
+
+        return parent::getDataBySource($source);
+    }
+}
+
+```
+然后，便可在项目中这样配置使用二进制流的数据源。  
+```
+// 从二进制流中获取密码
+'password' => array('name' => 'password', 'source' => 'stream'),
+```
+
+
 #### (3) 添加新的参数规则
 #### (4) 实现项目专属的签名方案
 
