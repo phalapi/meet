@@ -684,13 +684,16 @@ version=1.2.3
 ```
 配置好上面的白名单后，以下这些接口服务全部不会触发过滤器：  
 ```
+// 全部的Index方法
 ?service=Default.Index
 ?service=User.Index
 
+// Api_Test的全部方法
 ?service=Test.DoSth
 ?service=Test.Hello
 ?service=Test.GOGOGO
 
+// Api_User::GetBaseInfo()方法
 ?service=User.GetBaseInfo
 ```
 
