@@ -495,6 +495,7 @@ array(
  + $_FILES["upfile"]["tmp_name"] - 存储在服务器的文件的临时副本的名称
  + $_FILES["upfile"]["error"] - 由文件上传导致的错误代码
   
+> 参考：以上内容来自W3School，更多请参考[PHP 文件上传](http://www.w3school.com.cn/php/php_file_upload.asp)。  
 
 若需要配置默认值default选项，则也应为一数组，且其格式应类似如上。
 
@@ -588,6 +589,111 @@ call_user_func('MyClass::myCallbackMethod');
 
 
 ### 2.2.3 过滤器与签名验证
+
+#### (1) 如何开启过滤器进行签名验证？  
+当需要开启过滤器，只需要注册```DI()->filter```即可。在初始化文件init.php中去掉以下注释便可启用默认的签名验证服务。  
+```
+// $ vim ./Public/init.php
+// 签名验证服务
+DI()->filter = 'PhalApi_Filter_SimpleMD5';
+```
+这里的过滤器是指PhalApi在具体接口服务前所执行的过程，主要用于签名验证或实现其他预加载处理的功能。  
+
+### (2) 默认的签名方案
+PhalApi提供了一个默认签名验证方案，主要是基于md5的签名生成。这个只是作为一般性的参考，在实际项目开发中，我们应该在此基础上进行调整延伸。  
+  
+其默认验签的算法如下：   
+
+ + 1、排除签名参数（默认是sign）
+ + 2、将剩下的全部参数，按参数名字进行字典排序
+ + 3、将排序好的参数，全部用字符串拼接起来
+ + 4、进行md5运算
+ + 5、追加签名参数  
+
+如前面我们看到的，除了配置公共参数规则version外，我们还配置了公共参数规则sign。此sign参数则主要用于这里的签名验证。下面是一个具体的例子。  
+
+假设请求的接口服务链接是：  
+```
+/shop/?service=Welcome.Say&version=1.2.3
+```
+ 
+则会按以下方式生成并验证签名。  
+
+ + 1、排除签名参数（默认是sign）
+```
+?service=Welcome.Say&version=1.2.3
+```
+
+ + 2、将剩下的全部参数，按参数名字进行字典排序
+```
+service=Welcome.Say
+version=1.2.3
+```
+
+ + 3、将排序好的参数，全部用字符串拼接起来
+```
+"Welcome.Say1.2.3" = "Welcome.Say" + "1.2.3"
+```
+
+ + 4、进行md5运算
+```
+35321cc43cfc1e4008bf6f1bf = md5("Welcome.Say1.2.3")
+```
+
+ + 5、追加签名参数   
+```
+?service=Default.Index&username=dogstar&sign=35321cc43cfc1e4008bf6f1bf
+```
+
+开启默认签名后，需要按以上算法生成签名sign，并且在每次请求接口服务时加上此参数。在缺少签名或者签名错误情况下，会提示类似以下的错误。  
+```
+{
+    "ret": 406,
+    "data": [],
+    "msg": "非法请求：签名错误"
+}
+```
+
+#### (3) 接口服务白名单配置
+细心的读者会发现，对于默认的接口服务Default.Index是不需要进行签名验证的，这是因为在接口服务白名单中进行了配置。对于配置了白名单的接口服务，将不会触发过滤器的调用。  
+
+接口服务白名单配置是：```app.service_whitelist```，即配置文件```./Config/app.php```里面的```service_whitelist```配置，其默认值是：  
+```
+    'service_whitelist' => array(
+        'Default.Index',
+    ),
+```
+配置的格式有以下四种。  
+
+配置示例|分类|说明
+---|---|---|---|---
+```*.*```|通配，全部接口服务（慎用！）|如果配置了此规则，即全部的接口服务都不触发过滤器。  
+```Default.*```|某个类的全部方法|即Api_Default接口类的全部方法  
+```*.Index```|全部接口类的某个方法|即全部接口类的Index方法  
+```Default.Index```|指定某个接口服务|即Api_Default::Index()  
+  
+如果有多个生效的规则，按短路判断原则，即有任何一个白名单规则匹配后就跳过验证，不触发过滤器。  
+  
+以下是更多的示例：  
+```
+    'service_whitelist' => array(
+        '*.Index',           // 全部的Index方法
+        'Test.*',            // Api_Test的全部方法
+        'User.GetBaseInfo',  // Api_User::GetBaseInfo()方法
+    ),
+```
+配置好上面的白名单后，以下这些接口服务全部不会触发过滤器：  
+```
+?service=Default.Index
+?service=User.Index
+
+?service=Test.DoSth
+?service=Test.Hello
+?service=Test.GOGOGO
+
+?service=User.GetBaseInfo
+```
+
 ### 2.2.4 扩展你的项目
 
 #### (1) 如何定制接口服务的传递方式？
