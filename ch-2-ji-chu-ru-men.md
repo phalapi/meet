@@ -495,7 +495,7 @@ array(
  + $_FILES["upfile"]["tmp_name"] - 存储在服务器的文件的临时副本的名称
  + $_FILES["upfile"]["error"] - 由文件上传导致的错误代码
   
-> 参考：以上内容来自W3School，更多请参考[PHP 文件上传](http://www.w3school.com.cn/php/php_file_upload.asp)。  
+> 参考：以上内容来自W3School，文件上传时请使用表单上传，并enctype 属性使用"multipart/form-data"。更多请参考[PHP 文件上传](http://www.w3school.com.cn/php/php_file_upload.asp)。  
 
 若需要配置默认值default选项，则也应为一数组，且其格式应类似如上。
 
@@ -522,14 +522,13 @@ array(
 'ext' => 'jpg,jpeg,png,bmp' 
 ```
 
-> 温馨提示：文件上传时请使用表单上传，并enctype 属性使用"multipart/form-data"。具体请参考：[PHP 文件上传](http://www.w3school.com.cn/php/php_file_upload.asp)  
   
  + **回调 callable/callback**  
 
 当需要利用已有函数进行自定义验证时，可采用回调参数规则，如配置规则：  
 
 ```
-array('name' => 'version', 'type' => 'callable', 'callback' => array('Common_Request_Version', 'formatVersion'))
+array('name' => 'version', 'type' => 'callable', 'callback' => 'Common_Request_Version::formatVersion')
 ```
 然后，回调时将调用下面这个新增的类函数：
 ```
@@ -548,14 +547,19 @@ class Common_Request_Version {
 
 > 温馨提示：回调函数的签名为：```function format($value, $rule, $params)```，第一个为参数原始值，第二个为所配置的规则，第三个可选参数为配置规则中的params选项。最后应返回转换后的参数值。  
   
-还记得我们前面刚学的应用参数规则吗？在那里我们配置了一个version参数，现在让我们把这个版本参数类型修改成此自定义回调类型。即：  
+还记得我们前面刚学的三级参数规则吗？虽然在应用参数配置中已配置公共version参数规则，但我们可以在具体的接口类中重新配置这个规则。把在Hello World接口中把这个版本参数类型修改成此自定义回调类型。即：  
 ```
-// $ vim ./Config/app.php
-        ... ...
-        'version' => array(
-            // 'name' => 'version', 'default' => '1.4.0', , 
-            'name' => 'version', 'type' => 'callable', 'callback' => array('Common_Request_Version', 'formatVersion'), 'default' => '1.4.0'
-        )
+// $ vim ./Shop/Api/Welcome.php     
+class Api_Welcome extends PhalApi_Api {
+
+    public function getRules() {
+        return array(
+            'say' => array(
+                'version' => array('name' => 'version', 'type' => 'callable', 'callback' => 'Common_Request_Version::formatVersion'),
+            )
+        );
+    }
+... ...
 ```
 修改好后，便可使用此自定义的回调处理了。当正常传递合法version参数，如请求```/shop/welcome/say?version=1.2.3```，可以正常响应。若故意传递非法的version参数，如请求```/shop/welcome/say?version=123```，则会提示这样的错误：  
 ```
@@ -584,7 +588,7 @@ call_user_func('MyClass::myCallbackMethod');
 
 所以上面的callback也可以配置成：  
 ```
-'callback' => 'Common_Request_Version::formatVersion'
+'callback' => array('Common_Request_Version', 'formatVersion')
 ```
 
 
