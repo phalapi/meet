@@ -1360,9 +1360,52 @@ DI()->response->setDebug('y', $y);
     }
 ```
 
-### 扩展你的项目
+### 2.2.5 扩展你的项目
 #### (1) 调整响应结构
+默认返回的是ret字段、data字段和msg字段。如果需要使用其他字段名称，可以重载```PhalApi_Response::getResult()```，然后重新注册即可。请在父类返回的基础上再作调整，以保持对调试模式和后续新增基础功能的支持。 
+
+重载并实现后，需要重新注册```DI()->response```服务，这里不再赘述。  
+
 #### (2) 使用其他返回格式
+除了使用JSON格式返回外，还可以使用其他格式返回结果。  
+
+例如在部分H5混合应用页面进行异步请求的情况下，客户端需要服务端返回JSONP格式的结果，则可以这样在初始化文件./Public/init.php中去掉以下注释。  
+```
+if (!empty($_GET['callback'])) {
+    DI()->response = new PhalApi_Response_JsonP($_GET['callback']);
+}
+```
+
+当需要返回一种当前PhalApi没提供的格式，需要返回其他格式时，可以：  
+
+ + 1、实现抽象方法```PhalApi_Response::formatResult($result)```并返回格式化后结果
+ + 2、重新注册```DI()->response```服务
+
+
+这里以扩展XML返回格式为例，简单说明。首先，添加并实现一个子类，把结果转换为XML：  
+```
+// $ vim ./Shop/Common/Response/XML.php
+<?php
+class Common_Response_XML extends PhalApi_Response {
+
+    protected function formatResult($result) {
+        //TODO：把数组$result格式化成XML ...
+    }
+}
+```
+> 温馨提示：关于ArrayToXML，请查看：[将PHP数组转成XML](http://www.oschina.net/code/snippet_54100_1548)。
+
+随后，在Shop项目的入口文件中重新注册。  
+```
+// $ vim ./Public/shop/index.php
+DI()->response = 'Common_Response_XML';
+```
+
+再次请求Hello World接口服务时，可以看到结果已经改用XML返回。  
+```
+<?xml version="1.0" encoding="utf-8"?>
+<data><ret>200</ret><data>Hello World</data><msg></msg></data>
+```
 
 ## 2.3 细说ADM模式
 ### 何为Api-Domain-Model模式？
