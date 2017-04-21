@@ -1179,6 +1179,187 @@ DI()->response->addHeaders('Cache-Control, 'max-age=600, must-revalidate');
 
 ### 2.2.4 在线调试
 
+#### (1) 开启调试调试
+
+开启调试模式很简单，主要有两种方式：  
+
+ + **单次请求开启调试**：默认添加请求参数```&__debug__=1```  
+ + **全部请求开启调试**：把配置文件```./Config/sys.php```文件中的配置改成```'debug' => true,```  
+  
+请特别注意，在实际项目中，调试参数不应使用默认的调试参数，而应各自定义，使用更复杂的参数，从而减少暴露敏感或者调试信息的风险。例如：   
+
+ + 不推荐的做法：```&__debug__=1```  
+ + 一般的做法：```&__phalapi_debug__=1```  
+ + 更好的做法：```&__phalapi_debug__=202cb962ac59075b964b07152d234b70```  
+  
+#### (2) 调试信息有哪些？  
+> 温馨提示：调试信息仅当在开启调试模式后，才会返回并显示。  
+  
+正常响应的情况下，当开启调试模式后，会返回多一个```debug```字段，里面有相关的调试信息。如下所示：  
+```
+{
+    "ret": 200,
+    "data": {
+    },
+    "msg": "",
+    "debug": {
+        "stack": [  // 自定义埋点信息
+        ],
+        "sqls": [  // 全部执行的SQL语句
+        ]
+    }
+}
+```
+
+在发生未能捕捉的异常时，并且开启调试模式后，会将发生的异常转换为对应的结果按结果格式返回，即其结构会变成以下这样：  
+```
+{
+    "ret": 0,  // 异常时的错误码
+    "data": [],
+    "msg": "", // 异常时的错误信息
+    "debug": {
+        "exception": [  // 异常时的详细堆栈信息
+        ],
+        "stack": [  // 自定义埋点信息
+        ],
+        "sqls": [  // 全部执行的SQL语句
+        ]
+    }
+}
+```
+
+ + **查看全部执行的SQL语句**
+
+debug.sqls中会显示所执行的全部SQL语句，由框架自动搜集并统计。最后显示的信息格式是：  
+```
+[序号 - 当前SQL的执行时间ms]所执行的SQL语句及参数列表
+```
+示例：  
+```
+[1 - 0.32ms]SELECT * FROM tbl_user WHERE (id = ?); -- 1
+```
+表示是第一条执行的SQL语句，消耗了0.32毫秒，SQL语句是```SELECT * FROM tbl_user WHERE (id = ?);```，其中参数是1。  
+  
+ + **查看自定义埋点信息**  
+
+debug.stack中埋点信息的格式如下：  
+```
+[#序号 - 距离最初节点的执行时间ms - 节点标识]代码文件路径(文件行号)
+```
+示例：  
+```
+[#0 - 0ms]/path/to/PhalApi/Public/index.php(6)
+```
+表示，这是第一个埋点（由框架自行添加），执行时间为0毫秒，所在位置是文件```/path/to/PhalApi/Public/index.php```的第6行。即第一条的埋点发生在框架初始化时：  
+```
+// $ vim ./Public/init.php
+if (DI()->debug) {
+    // 启动追踪器
+    DI()->tracer->mark();
+    ... ...
+}
+```
+  
+与SQL语句的调试信息不同的是，自定义埋点则需要开发人员根据需要自行纪录，可以使用全球追踪器```DI()->tracer```进行纪录，其使用如下：  
+```
+// 添加纪录埋点
+DI()->tracer->mark();
+
+// 添加纪录埋点，并指定节点标识
+DI()->tracer->mark('DO_SOMETHING');
+```
+通过上面方法，可以对执行经过的路径作标记。你可以指定节点标识，也可以不指定。对一些复杂的接口，可以在业务代码中添加这样的埋点，追踪接口的响应时间，以便进一步优化性能。当然，更专业的性能分析工具推荐使用XHprof。  
+> 参考：用于性能分析的[XHprof扩展类库](http://git.oschina.net/dogstar/PhalApi-Library/tree/master/Xhprof)。  
+  
+例如在Hello World接口服务中，添加一个操作埋点。  
+```
+// $ vim ./Shop/Api/Welcome.php
+    public function say() {
+        DI()->tracer->mark('欢迎光临');
+
+        return 'Hello World';
+    }  
+```
+
+再次请求，并使用```&__debug__=1```开启调试模式后会看到类似这样的返回结果。  
+```
+{
+    "ret": 200,
+    "data": "Hello World",
+    "msg": "",
+    "debug": {
+        "stack": [
+            "[#0 - 0ms]/path/to/PhalApi/Public/shop/index.php(6)",
+            "[#1 - 5.4ms - 欢迎光临]/path/to/PhalApi/Shop/Api/Welcome.php(13)"
+        ],
+        "sqls": []
+    }
+}
+```
+  
+可以看出，在“开始读取数据库”前消耗了5.4毫秒，以及相关的代码位置。  
+
+ + **查看异常堆栈信息**  
+
+当有未能捕捉的接口异常时，开启调试模式后，框架会把对应的异常转换成对应的返回结果，并在debug.exception中体现。而不是像正常情况直接500，页面空白。这些都是由框架自动处理的。  
+  
+继续上面的示例，让我们故意制造一些麻烦，手动抛出一个异常。  
+```
+// $ vim ./Shop/Api/Welcome.php
+    public function say() {
+        DI()->tracer->mark('欢迎光临');
+
+        throw new Exception('这是一个演示异常调试的示例', 501);
+
+        return 'Hello World';
+    }  
+```
+
+再次请求后，除了SQL语句和自定义埋点信息外，还会看到这样的异常堆栈信息。  
+```
+{
+    "ret": 501,
+    "data": [],
+    "msg": "这是一个演示异常调试的示例",
+    "debug": {
+        "exception": [
+            {
+                "function": "say",
+                "class": "Api_Welcome",
+                "type": "-&gt;",
+                "args": []
+            },
+            ... ...
+        ],
+        "stack": ... ...,
+        "sqls": ... ...
+    }
+}
+```
+
+然后便可根据返回的异常信息进行排查定位问题。  
+
+ + **添加自定义调试信息**
+
+当需要添加其他调试信息时，可以使用```DI()->response->setDebug()```进行添加。  
+  
+如： 
+```
+$x = 'this is x';
+$y = array('this is y');
+DI()->response->setDebug('x', $x);
+DI()->response->setDebug('y', $y);
+```
+请求后，可以看到：  
+```
+    "debug": {
+        "x": "this is x",
+        "y": [
+            "this is y"
+        ]
+    }
+```
+
 ### 扩展你的项目
 #### (1) 调整响应结构
 #### (2) 使用其他返回格式
