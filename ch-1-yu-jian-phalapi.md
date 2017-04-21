@@ -162,11 +162,11 @@ http://api.phalapi.net/demo/
 
 安装向导在目录```./Public/install/```下，在浏览器输入```http://api.phalapi.net/install/```便可访问此安装向导。安装界面如下：  
 
-![](https://github.com/phalapi/meet/blob/master/images/ch-1-api-install.png)  
+![](images/ch-1-api-install.png)  
 图1-1 安装向导  
   
 随后按照提示，一步步操作即可。创建新项目过程，会要求输入项目名称。假设我们需要为商城创建一个项目，并命名为：shop，那么安装完成后访问效果如下。  
-![](https://github.com/phalapi/meet/blob/master/images/ch-1-shop-default-api.png)  
+![](images/ch-1-shop-default-api.png)  
 图1-2 新建shop项目的运行效果  
   
 这时，可以看到新建了以下目录和文件。  
@@ -232,7 +232,7 @@ http://api.phalapi.net/shop/?service=Welcome.Say
 ```
   
 以上代码和运行结果截图如下。  
-![](https://github.com/phalapi/meet/blob/master/images/ch-1-shop-welcome.png)  
+![](images/ch-1-shop-welcome.png)  
 图 1-3 Hello World代码与运行结果  
   
 是不是发现接口开发很简单？  

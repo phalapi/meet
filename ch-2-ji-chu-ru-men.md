@@ -1389,7 +1389,7 @@ if (!empty($_GET['callback'])) {
 class Common_Response_XML extends PhalApi_Response {
 
     protected function formatResult($result) {
-        //TODO：把数组$result格式化成XML ...
+        // TODO：把数组$result格式化成XML ...
     }
 }
 ```
