@@ -1393,7 +1393,7 @@ class Common_Response_XML extends PhalApi_Response {
     }
 }
 ```
-> 温馨提示：关于ArrayToXML，请查看：[将PHP数组转成XML](http://www.oschina.net/code/snippet_54100_1548)。
+> 温馨提示：关于数组转XML，可参考[将PHP数组转成XML](http://www.oschina.net/code/snippet_54100_1548)，或[Convert array to XML in PHP](http://www.codexworld.com/convert-array-to-xml-in-php/)。  
 
 随后，在Shop项目的入口文件中重新注册。  
 ```
