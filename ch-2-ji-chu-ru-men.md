@@ -1761,6 +1761,26 @@ if (!$domain->hasJoined(3, 100)) {
 
 故事，因为真实，所以生动。  
 
+对于前面的示例，对于商品快照信息的获取，假设不能返回价格为0或负数的商品信息。则可以添加对价格有效性判断的业务规则处理：  
+```
+// $ vim ./Shop/Domain/Goods.php
+<?php
+class Domain_Goods {
+
+    public function snapshot($goodsId) {
+        $model = new Model_Goods();
+        $info = $model->getSnapshot($goodsId);
+
+        if (empty($info) || $info['goods_price'] <= 0) {
+            return array();
+        }
+
+        return $info;
+    }
+}
+```
+接下来，休息一下，继续探讨Model数据层。  
+
 ### 2.3.4 广义的Model数据层
 
 ### 2.3.5 ADM调用关系
