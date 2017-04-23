@@ -1433,6 +1433,8 @@ DI()->response = 'Common_Response_XML';
  + 轻量级的通信机制
  + 松耦合、独立部署
    
+Api接口服务层，主要是负责响应客户端的请求，在抽象层面进行决策并对领域层进行调度，最后返回相应的结果。
+
 #### (1) 接口服务的定义
 
 在实际项目开发过程中，绝大部分我们编写的接口服气都是提供给别的开发工程师使用的，包括但不限于客户端开发人员，前端开发人员和其他后端系统开发人员。为了提高并行开发的速度，我们不能等到接口服务开发完成后才提供相应接口文档，而应尽早提供具体描述了接口服务定义的接口文档。   
@@ -1523,6 +1525,92 @@ http://api.phalapi.net/shop/checkApiParams.php?service=Goods.Snapshot
 图2-3 Goods.Snapshot在线接口服务说明文档  
 
 由前面创建的类和编写的代码、配置的规则以及文档注释，最终生成了这份接口文档。即使在未完成接口服务的开发情况下，通过此在线文档，使用方也能明确接口服务的功能，以及需要传递的参数和返回结果的说明，从而不影响他们的开发进度。 
+
+> 温馨提示：这里省略了公共参数中的签名参数和版本参数。关于在线文档的使用，后续会再进行详细说明。  
+
+#### (2) 在TDD下讲故事
+
+在完成了接口服务定义后，可以说，我们为讲述故事铺垫好了背景，部署好了场景上下文。接下来，我们推荐遵循测试驱动开发的理念，在意图导向编程的引导下继续完成故事的讲述。主要的方向是，为了验证业务场景的正确性，应该先编写不断引导我们前往正确目的地的单元测试，再开始编写具体的代码。 
+
+继续上面的获取商品快照信息接口服务，我们可以使用PhalApi提供的脚本命令快速生成测试骨架。其用法如下：  
+```
+$ cd ./Shop/Tests
+$ php ../../PhalApi/phalapi-buildtest ../Api/Goods.php Api_Goods ./test_env.php > ./Api/Goods_Test.php
+```
+> 温馨提示：关于phalapi-buildtest脚本命令的使用，详细请见后续说明。  
+
+上面主要是生成了```Goods.Snapshot```接口服务对应的测试骨架代码，并保存在文件./Api/Goods_Test.php里。然后，稍微修改完善生成的测试代码。  
+```
+$ vim ./Shop/Tests/Api/Goods_Test.php
+require_once dirname(__FILE__) . '/../test_env.php'; // 调整测试环境文件的加载
+
+... ...
+
+    public function testSnapshot()
+    {
+        // Step 1. 构建请求URL
+        $url = 'service=Goods.Snapshot';
+        $params = array(
+            'id' => 1,
+        );
+
+        // Step 2. 执行请求
+        $rs = PhalApi_Helper_TestRunner::go($url, $params);
+        //var_dump($rs);
+
+        //Step 3. 验证
+        $this->assertNotEmpty($rs);
+        $this->assertArrayHasKey('goods_id', $rs);
+        $this->assertArrayHasKey('goods_name', $rs);
+        $this->assertArrayHasKey('goods_price', $rs);
+        $this->assertArrayHasKey('goods_image', $rs);
+    }
+```
+上面的单元测试，根据构建-执行-验证模式，对商品ID为1的信息进行验证，主要是验证是否包含goods_id、goods_name、goods_price、goods_image这四个字段。  
+
+试执行一下此单元测试，明显是失败的。  
+```
+Tests$ phpunit ./Api/Goods_Test.php 
+
+.F
+
+There was 1 failure:
+
+1) PhpUnderControl_ApiGoods_Test::testSnapshot
+Failed asserting that a NULL is not empty.
+
+/path/to/Shop/Tests/Api/Goods_Test.php:56
+```
+> 温馨提示：PHPUnit的安装请参考[安装 PHPUnit](https://phpunit.de/manual/3.7/zh_cn/installation.html) 
+
+到这里，我们讲述了一个失败的故事，因为这个故事讲不下去了。但我们知道错在哪里。要想让这个故事讲得通，我们可以先简单模拟一些数据，即先讲一个假故事。  
+
+修改Goods.Snapshot接口服务的源代码，添返回以下模拟的商品数据。  
+```
+    public function snapshot() {
+        return array(
+            'goods_id' => 1,
+            'goods_name' => 'iPhone 7 Plus',
+            'goods_price' => 6680,
+            'goods_image' => '/images/iphone_7_plus.jpg',
+        );
+    }
+```
+此时，再运行单元测试，是可以通过的了。到这一步，虽然我们最终尚未实现接口服务的开发，但已经是非常 接近了。因为我们已经提供了在线接口说明文档给使用方，现在又可以有一份模拟的接口返回数据，虽然是假的。而这些文档和模拟数据，都已经可以帮忙客户端完成主流程的业务功能开发。  
+
+接下来，让我们再进一步，把这个故事讲得更真实，更动听，更丰满一点。  
+
+还记得我们Api层的职责吗？Api层主要负责请求响应、进行决策和高层的调度。下面是Goods接口层调整后的代码实现：  
+```
+    public function snapshot() {     
+        $domain = new Domain_Goods();
+        $info = $domain->snapshot($this->id);
+        return $info;
+    }
+```
+即根据客户端传递的商品ID，把具体的快照信息提取委托给领域业务层Domain_Goods进行，最后返回结果给客户端。  
+
+那么什么是领域业务层呢？  
 
 ### 2.3.3 专注领域的Domain业务层
 ### 2.3.4 广义的Model数据层
