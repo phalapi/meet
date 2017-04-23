@@ -2143,7 +2143,169 @@ $ tree ./Shop/Model/
 虽然这种方案，可以提供更清晰、更可视化的数据管理，但与此同时也引入了一定的复杂性，建议在大型项目中优先考虑采用，在小型项目中可以先快速迭代再逐渐演进考虑。  
 
 ## 2.4 配置  
-前提
+在学习了接口请求、接口响应和ADM架构模式后，我们已经掌握了接口服务开发的基本流程。在进入数据库操作和缓存的使用前，我们还要先来学习一下配置的使用。因为后面的数据库和缓存相关配置信息，都需要使用配置来获取。  
+
+### 2.4.1 配置的简单读取
+
+默认情况下，项目里会有以下三个配置文件：  
+```
+$ tree ./Config/
+./Config/
+├── app.php
+├── dbs.php
+└── sys.php
+```
+其中app.php为项目应用配置；dbs.php为分布式存储的数据库配置；sys.php为不同环境下的系统配置。  
+
+在初始化文件，默认已注册配置组件服务。  
+```
+//$ vim ./Public/init.php
+// 配置
+DI()->config = new PhalApi_Config_File(API_ROOT . '/Config');
+```
+  
+假设app.php配置文件里有：  
+```
+return array(
+    'version' => '1.1.1',
+    'email' => array(
+        'address' => 'chanzonghuang@gmail.com',
+    );
+);
+```
+  
+可以分别这样根据需要获取配置：
+```
+// app.php里面的全部配置
+DI()->config->get('app');                 //返回：array( ... ... )
+
+// app.php里面的单个配置
+DI()->config->get('app.version');        //返回：1.1.1
+
+// app.php里面的多级配置
+DI()->config->get('app.email.address');  //返回：'chanzonghuang@gmail.com'
+```
+  
+其他配置文件的读取类似，你也可以根据需要添加新的配置文件。  
+
+### 2.4.2 配置管理策略
+
+可以说，在项目开发中，除了我们的代码、数据和文档外，配置也是一块相当重要的组成部分，而且占据着非常重要的位置。最为明显的是，如果配置一旦出错，就很可能影响到整个系统的运行，并且远比修改再上线发布的代码影响的速度要快。  
+  
+这里将讨论另外一个同样重要的问题，即：**不同环境下不同配置的管理和切换**。现在将不同的策略分说如下。  
+
+#### (1) 支持整包发布的环境变量配置
+
+此种策略的主要方法就是在PHP代码中读取php-fpm中的ENV环境配置，再对应到Linux环境下的profile环境变量，即：
+```
+PHP代码 --> $_ENV环境配置 --> Linux服务器环境变量/etc/profile
+```
+这样的好处莫过于可以支持项目代码的整包发布，而不需要在各个环境（开发环境、测试环境、回归环境、预发布环境、生产环境）来回修改切换配置，同时运维可以更好地保护服务器的账号和密码而不让开发知道。  
+  
+而这样的不足则是，在对项目进行初次部署时，需要添加以上一系列的配置，而且后期维护也比较复杂麻烦，特别当机器多时。这时可以通过pupple/stacksalt这些运维工具进行自动化管理。但对于开发来说，依然会觉得有点烦锁。  
+
+#### (2) 不同环境，不同入口
+当服务器的账号和密码也是由开发来掌控时，则可以使用这种在代码层次控制的策略。  
+  
+例如，可以在Shop项目的访问目录提供不同的入口，一如添加测试入口文件./Public/shop/test.php。  
+
+我们有这样不同的入口，客户端在测试时，只需要将入口路径改成：```/shop/test.php?service=Class.Action```，而在打包发布时只需要将入口路径改成：```/shop/?service=Class.Action```即可，也就是将test.php去掉。  
+
+而在服务端，仅需要在这些不同的入口文件，修改一下配置文件目录路径即可：
+```
+//$ vim ./Public/shop/test.php
+DI()->config = new PhalApi_Config_File(API_ROOT . '/Config/Test');
+```
+  
+另外，也可以使用相同的访问入口，但通过客户端在请求时带参数来作区分，如带上&env=test或者&env=prod。  
+
+#### (3) 持续集成下的配置管理
+但个人最为建议的还是在**持续集成**下进行配置管理。因为首先，持续集成中的发布应该是经常性的，且应该是自动化的。所以，既然有自动化的支持，我们也应该及早地将配置纳入其中管理。  
+  
+配置文件不同只要是环境不同，而环境不同所影响的配置文件通常只有sys.php和dbs.php；为此，我们为测试环境和生产环境准备了各自的配置文件，而在发布时自动选择所需要的配置文件。一般地，我们建议生产环境的配置文件以**.prod**结尾。所以，这时我们的配置文件可能会是这样：
+```
+$ tree ./Config/
+./Config/
+├── app.php
+├── app.php.prod
+├── dbs.php
+├── sys.php
+└── sys.php.prod
+```
+这里多了生产环境的配置文件：dbs.php.prod和sys.php.prod。  
+  
+再通过发布工具，我们就可以对不同环境的配置文件进行快速选择了。这里以phing为例，说明一下相关的配置和效果。  
+  
+在Phing的配置文件build.xml中，在生产环境发布过程中，我们将配置文件进行了替换。
+```javascript
+//$ vim ./build.xml 
+        <copy 
+            file="./Config/dbs.php.prod" 
+            tofile="./Config/dbs.php" 
+            overwrite="true" />
+        <copy 
+            file="./Config/sys.php.prod" 
+            tofile="./Config/sys.php" 
+            overwrite="true" />
+```
+  
+执行phing发布后，将会看到对应的这样提示：
+```javascript
+     [copy] Copying 1 file to /path/to/PhapApi/Config
+     [copy] Copying 1 file to /path/to/PhapApi/Config
+```
+
+### 2.4.3 使用Yaconf扩展快速读取配置
+
+Yaconf扩展需要PHP 7及以上版本，并且需要先安装Yaconf扩展。
+> 温馨提示：Yaconf扩展的安装请参考[laruence/yaconf](https://github.com/laruence/yaconf)。  
+  
+安装部署完成后，便和正常的配置一样使用。
+
+假设我们已经有了这样的配置文件：  
+```
+$ vim ./test.ini
+name="PhalApi"
+version="1.3.1"
+```
+
+则可以这样使用：  
+```
+// 注册
+DI()->config = new PhalApi_Config_Yaconf();
+
+// 相当于var_dump(Yaconf::get("foo"));
+var_dump(DI()->config->get('foo'));
+
+//相当于var_dump(Yaconf::has("foo"));
+var_dump(DI()->config->has('foo')); 
+```
+  
+需要注意的是，使用Yaconf扩展与默认的文件配置的区别的是，配置文件的目录路径以及配置文件的格式。当然也可以把Yaconf扩展的配置目录路径设置到PhalApi的配置目录./Config。  
+
+### 2.5.4 扩展你的项目
+
+#### (1) 主从数据库的配置
+
+默认只有一从数据库的配置，并支持分表分库配置。当需要数据库从库时，可以参考./Config/dbs.php配置，复件一份作为从库的配置，例如：  
+```
+cp ./Config/dbs.php ./Config/dbs_slave.php
+```
+然后，注册一个数据库从库的notorm时，指定使用从库的配置。  
+```
+DI()->notormSlave = function() {
+    return new PhalApi_DB_NotORM(DI()->config->get('dbs_slave'), DI()->debug); //注意：配置不同
+};
+```
+最后使用此从库的服务```DI()->notormSlave```即可完成对从库的读取操作，用法同DI()->notorm，后续会再详细说明。  
+
+#### (2) 扩展其他配置读取方式
+
+虽然上面有不同的配置文件管理策略，但很多实际情况下，我们的配置需要可以随时更改、下发和调整。并且在海量访问，性能要求高的情况下快速读取配置。  
+  
+这就要求我们的项目既可以方便维护即时修改，又需要能够快速同步一致更新下发和读取。这样就涉及到了配置更高层的管理：统一集中式的配置管理，还是分布式的配置管理？文件存储，还是DB存储，还是MC缓存，还是进驻内存？    
+
+这里不过多地谈论配置更多的内容，但在PhalApi框架中，根据需要实现```PhalApi_Config::get($key, $default = NULL)```接口后，再次简单的在入口文件重新注册即可。
 
 ## 2.5 数据库操作
 ### 基于NotORM的操作
