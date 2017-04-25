@@ -3044,6 +3044,97 @@ $model->delete(1);
 
 ### 2.5.4 事务操作与关联查询
 
+ + **事务操作**
+
+关于事务的操作，可以使用NotORM的方式。例如：  
+
+```
+// 第一步：先指定待进行事务的数据库
+// 通过获取一个notorm表实例来指定；否则会提示：PDO There is no active transaction
+$user = DI()->notorm->user;
+
+// 第二步：开启事务开关（此开关会将当前全部打开的数据库都进行此设置）
+DI()->notorm->transaction = 'BEGIN';
+
+// 第三步：进行数据库操作
+$user->insert(array('name' => 'test1',));
+$user->insert(array('name' => 'test2',));
+
+// 第四：提交/回滚
+DI()->notorm->transaction = 'COMMIT';
+//DI()->notorm->transaction = 'ROLLBACK';
+```
+
+也可以使用PhalApi封装的事务操作方式，并且推荐使用该方式。   
+```
+    //Step 1: 开启事务
+    DI()->notorm->beginTransaction('db_demo');
+
+    //Step 2: 数据库操作
+    DI()->notorm->user>insert(array('name' => 'test1'));
+    DI()->notorm->user>insert(array('name' => 'test2'));
+
+    //Step 3: 提交事务/回滚
+    DI()->notorm->commit('db_demo');
+    //DI()->notorm->rollback('db_demo');
+```
+
+ + **关联查询**  
+
+对于关联查询，简单的关联可使用NotORM封装的方式，而复杂的关联，如多个表的关联查询，则可以使用PhalApi封装的接口。  
+
+如果是简单的关联查询，可以使用NotORM支持的写法，这样的好处在于我们使用了一致的开发，并且能让PhalApi框架保持分布式的操作方式。需要注意的是，关联的表仍然需要在同一个数据库。  
+  
+以下是一个简单的示例。假设我们有这样的数据：  
+```
+INSERT INTO `phalapi_user` VALUES ('1', 'wx_edebc877070133c65161d00799e00544', 'weixinName', '******', '4CHqOhe1Jxi3X9HmRfPOXygDnU267eCA', '1431790647', 'phpunit.png');
+INSERT INTO `phalapi_user_session_0` VALUES ('1', '1', 'ABC', '', '0', '0', '0', null);
+``` 
+  
+那么对应关联查询的代码如下面：
+```
+// SELECT expires_time, user.username, user.nickname FROM phalapi_user_session_0 
+// LEFT JOIN phalapi_user AS user 
+// ON phalapi_user_session_0.user_id = user.id 
+// WHERE (token = 'ABC') LIMIT 1
+$rs = DI()->notorm->user_session_0
+    ->select('expires_time, user.username, user.nickname')
+    ->where('token', 'ABC')
+    ->fetchRow();
+
+var_dump($rs);
+```
+
+会得到类似这样的输出：
+```
+array(3) {
+  ["expires_time"]=>
+  string(1) "0"
+  ["username"]=>
+  string(35) "wx_edebc877070133c65161d00799e00544"
+  ["nickname"]=>
+  string(10) "weixinName"
+}
+```
+  
+这样，我们就可以实现关联查询的操作。按照NotORM官网的说法，则是：  
+> If the dot notation is used for a column anywhere in the query ("$table.$column") then NotORM automatically creates left join to the referenced table. Even references across several tables are possible ("$table1.$table2.$column"). Referencing tables can be accessed by colon: $applications->select("COUNT(application_tag:tag_id)").
+  
+->select('expires_time, user.username, user.nickname')这一行调用将会【自动产生关联操作】，而ON 的字段，则是这个字段关联你配置的【表结构】，外键默认为： 表名_id 。
+
+如果是复杂的关联查询，则是建议使用原生态的SQL语句，但仍然可以保持很好的写法，如这样一个示例：
+```
+$sql = 'SELECT t.id, t.team_name, v.vote_num '
+    . 'FROM phalapi_team AS t LEFT JOIN phalapi_vote AS v '
+    . 'ON t.id = v.team_id '
+    . 'ORDER BY v.vote_num DESC';
+
+$rows = $this->getORM()->queryAll($sql, array());
+var_dump($rows);
+```
+
+注意，此时的表需要使用全名，即自带前缀。这样也可以实现更自由的关联查询。   
+
 ### 2.5.5 分表策略
 ### 2.5.6 扩展你的项目
 #### (1) 主从数据库的配置
@@ -3063,7 +3154,58 @@ DI()->notormSlave = function() {
 #### (2) 其他数据库的链接
 
 #### (3) 定制化你的Model基类
- 
+
+正如前文在Model基类中提到的两个问题：LOB序列化和分表处理。如果PhalApi现有的解决方案不能满足项目的需求，可进行定制化处理。  
+  
+ + **LOB序列化**  
+
+先是LOB序列化，考虑到有分表的存在，当发生数据库变更时会有一定的难度和风险，尤其是在线上生产环境。因此引入了扩展字段ext_data。当然，此字段在应对数据库变更的同时，也可以作为简单明了的值对象的大对象。序列化LOB首先要考虑的问题是使用二进制（BLOB）还是文本（CLOB），出于通用性、易读性和测试性，我们目前使用了json格式的文本序列化。例如考虑到空间或性能问题，可以重载格式化方法```PhalApi_Model_NotORM::formatExtData()```和解析方法```PhalApi_Model_NotORM::parseExtData()```。  
+  
+比如改成serialize序列化：  
+```
+<?php
+abstract class Common_Model_NotORM extends PhalApi_Model_NotORM {
+
+	/**
+	 * 对LOB的ext_data字段进行格式化(序列化)
+	 */
+	protected function formatExtData(&$data) {
+		if (isset($data['ext_data'])) {
+			$data['ext_data'] = serialize($data['ext_data']);
+		}
+	}
+
+	/**
+	 * 对LOB的ext_data字段进行解析(反序列化)
+	 */
+	protected function parseExtData(&$data) {
+		if (isset($data['ext_data'])) {
+			$data['ext_data'] = unserialize($data['ext_data'], true);
+		}
+	}
+
+	// ...
+}
+```
+  
+然后编写继承于Common_Model_NotORM的Model子类。   
+```
+<?php
+class Model_User extends Common_Model_NotORM {
+   //...
+}
+```
+
+就可以轻松切换到序列化，如：  
+```
+$model = new Model_User();
+
+// 带有ext_data的更新
+$extData = array('level' => 3, 'coins' => 256);
+$data = array('name' => 'test', 'update_time' => time(), 'ext_data' => $extData);
+$model->update(1, $data); //基于主键的快速更新
+```
+
 ## 2.6 缓存策略
 
 ## 2.7 日记
