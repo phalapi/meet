@@ -2858,7 +2858,7 @@ insert()|插入数据|$user->insert($data);|原生态操作需要再调用insert
 insert_multi()|批量插入|$user->insert_multi($rows);|可批量插入|否
 insert_update()|插入/更新|接口签名：insert_update(array $unique, array $insert, array $update = array()|不存时插入，存在时更新|否
 
-表2-12 插入操作  
+表2-12 数据库插入操作  
 
 插入单条纪录数据，注意，必须是同一个NotORM表实例，方能获取到新插入的行ID，且表必须设置了自增主键ID。    
 ```
@@ -2906,7 +2906,141 @@ var_dump($rs);
 
 #### (4) CURD之更新操作（Update）
 
+操作|说明|示例|备注|是否PhalApi新增
+---|---|---|---|---
+update()|更新数据|$user->where('id', 1)->update($data);|更新异常时返回false，数据无变化时返回0，成功更新返回1|否
+  
+表2-13 数据库更新操作  
+
+根据条件更新数据：  
+```
+// UPDATE tbl_user SET age = 2 WHERE (name = 'PhalApi');
+$data = array('age' => 2);
+$rs = $user->where('name', 'PhalApi')->update($data);
+var_dump($rs);
+
+// 输出
+int(1) //正常影响的行数
+int(0) //无更新，或者数据没变化
+boolean(false) //更新异常、失败
+```
+  
+更新数据，进行加1操作： 
+```
+// UPDATE tbl_user SET age = age + 1 WHERE (name = 'PhalApi')
+$rs = $user->where('name', 'PhalApi')->update(array('age' => new NotORM_Literal("age + 1")));
+var_dump($rs); 
+
+// 输出影响的行数
+```
+
 #### (5) CURD之删除类（Delete）
+
+操作|说明|示例|备注|是否PhalApi新增
+---|---|---|---|---
+delete()|删除|$user->where('id', 1)->delete();|禁止无where条件的删除操作|否
+  
+表2-14 数据库删除操作  
+
+按条件进行删除，并返回影响的行数：  
+```
+// DELETE FROM tbl_user WHERE (id = 404);
+$user->where('id', 404)->delete();
+```
+
+请特别注意，PhalApi禁止全表删除操作。即如果是全表删除，将会被禁止，并抛出异常。如：  
+
+```
+// Exception: sorry, you can not delete the whole table
+$user->delete();
+```
+
+#### (6) 表数据入口模式与Model基类
+
+ + **表数据入口模式**  
+
+我们一直在考虑，是否应该提供数据库的基本操作支持，以减少开发人员重复手工编写基本的数据操作。最后，我们认为是需要的。继而引发了新的问题：是以继承还是以委托来支持？  
+  
+委托有助于降低继承的层级，但却需要编写同类的操作以完成委托。所以，这里提供了基于NotORM的Model基类：PhalApi_Model_NotORM。但提供这个基类还是会遇到一些问题，例如：如何界定基本操作？如何处理分表存储？如何支持定制化？  
+  
+由于我们这里的Model使用了**“表数据入口”**模式，而不是“行数据入口”，也不是“活动纪录”，也不是复杂的“数据映射器”。所以在使用时可以考虑是否需要此基类。即使这样，你也可以很轻松转换到“行数据入口”和“活动纪录”模式。这里，PhalApi中的Model是更广义上的数据源层（后面会有更多说明），因此对应地PhalApi_Model_NotORM基类充当了数据库表访问入口的对象，处理表中所有的行。  
+  
+ + **规约层的CURD**  
+
+在明白了Model基类的背景后，再来了解其具体的操作和如何继承会更有意义。具体的操作与数据表的结构相关，在“约定编程”下：即每一个表都有一个主键（通常为id，也可以自由配置）以及一个序列化LOB字段ext_data。我们很容易想到Model接口的定义。为了突出接口签名，注释已移除，感兴趣的同学可查看源码。  
+```
+interface PhalApi_Model {
+	
+	public function get($id, $fields = '*');
+
+	public function insert($data, $id = NULL);
+
+	public function update($id, $data);
+
+	public function delete($id);
+}
+```
+上面的接口在规约层上提供了基于表主键的CURD基本操作，在具体实现时，需要注意两点：一是分表的处理；另一点则是LOB字段的序列化。  
+  
+ + **不使用Model基类的写法**
+
+由于我们使用了NotORM进行数据库的操作，所以这里也提供了基于NotORM的基类：PhalApi_Model_NotORM。下面以我们熟悉的获取用户的基本信息为例，说明此基类的使用。
+  
+下面是不使用Model基数的实现代码：  
+```
+<?php
+class Model_User {
+
+    public function getByUserId($userId) {
+        return DI()->notorm->user->select('*')->where('id = ?', $userId)->fetch();
+    }
+}
+```
+
+获取ID为1的用户信息，对应的调用为：  
+```
+$model = new Model_User();
+$rs = $model->getByUserId(1);
+```
+  
+ + **继承Model基类的写法**
+
+若继承于PhalApi_Model_NotORM，则Model子类的实现代码是：  
+```
+<?php
+class Model_User extends PhalApi_Model_NotORM {
+}
+```
+
+从上面的代码可以看出，基类已经提供了基于主键的CURD操作，并且默认根据规则自动使用user作为表名。相应地，当需要获取ID为1的用户信息时，外部调用则调整为：  
+```
+$model = new Model_User();
+$rs = $model->get(1);
+```
+
+再进一步，我们可以得到其他的基本操作：
+```
+$model = new Model_User();
+
+//查询
+$row = $model->get(1);
+$row = $model->get(1, 'id, name'); //取指定的字段
+$row = $model->get(1, array('id', 'name')); //可以数组取指定要获取的字段
+
+//更新
+$data = array('name' => 'test', 'update_time' => time());
+$model->update(1, $data); //基于主键的快速更新
+
+//插入
+$data = array('name' => 'phalapi');
+$id = $model->insert($data);
+//$id = $model->insert($data, 5); //如果是分表，可以这样指定
+
+//删除
+$model->delete(1);
+```
+
+通过对比，可以发现，使用继承于PhalApi_Model_NotORM基类的写法更简单，并且更统一，而且能更好地封装对数据库的操作。因此，我们通常推荐使用此实现方式。
 
 ### 2.5.4 事务操作与关联查询
 
@@ -2928,6 +3062,7 @@ DI()->notormSlave = function() {
 
 #### (2) 其他数据库的链接
 
+#### (3) 定制化你的Model基类
  
 ## 2.6 缓存策略
 
