@@ -25,6 +25,7 @@ PhalApi默认使用的是HTTP/HTTPS协议进行通讯，请求接口的完整URL
  + 优酷开放平台：https://openapi.youku.com
  + 微信公众号： https://api.weixin.qq.com
  + 新浪微博： https://api.weibo.com
+
   
 如第1章中，我们创建的接口项目，其域名为：```api.phalapi.net```。  
 
@@ -2467,8 +2468,387 @@ return array(
 
 ### 2.5.3 CURD基本操作
 
+为了方便大家理解数据库的操作，假设数据库中已经有以下数据库表和纪录。 
+
+```
+CREATE TABLE `tbl_user` (
+  `id` int(11) NOT NULL,
+  `name` varchar(45) DEFAULT NULL,
+  `age` int(3) DEFAULT NULL,
+  `note` varchar(45) DEFAULT NULL,
+  `create_date` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+INSERT INTO `tbl_user` VALUES ('1', 'dogstar', '18', 'oschina', '2015-12-01 09:42:31');
+INSERT INTO `tbl_user` VALUES ('2', 'Tom', '21', 'USA', '2015-12-08 09:42:38');
+INSERT INTO `tbl_user` VALUES ('3', 'King', '100', 'game', '2015-12-23 09:42:42');
+```
+
+并且，假设已获得了tbl_user表对应的NotORM实例$user。此NotORM表实例可从两种方式获得：  
+```
+// 全局获取方式
+$user = DI()->notorm->user;
+
+// 局部获取方式
+$user = $this->getORM();
+```
+
+下面将结合示例，分别介绍如何使用NotORM表实例进行基本的数据库操作。
+
+#### (1) SQL基本语句
+
+ + **SELECT字段选择**  
+
+选择单个字段：    
+```
+// SELECT id FROM `tbl_user`
+$user->select('id') 
+```
+
+选择多个字段：  
+```
+// SELECT id, name, age FROM `tbl_user`
+$user->select('id, name, age') 
+```
+
+使用字段别名：
+```
+// SELECT id, name, MAX(age) AS max_age FROM `tbl_user`
+$user->select('id, name, MAX(age) AS max_age') 
+```
+
+选择全部表字段：  
+```
+// SELECT * FROM `tbl_user`
+$user->select('*') 
+```
+
+ + **WHERE条件**
+
+单个条件：
+```
+// WHERE id = 1
+$user->where('id', 1)
+$user->where('id = ?', 1)
+$user->where(array('id', 1))
+```
+
+多个AND条件：
+```
+// WHERE id > 1 AND age > 18
+$user->where('id > ?', 1)->where('age > ?', 18)
+$user->and('id > ?', 1)->and('age > ?', 18)
+$user->where('id > ? AND age > ?', 1, 18)
+$user->where(array('id > ?' => 1, 'age > ?' => 10))
+
+// WHERE name = 'dogstar' AND age = 18
+$user->where(array('name' => 'dogstar', 'age' => 18))
+```
+
+多个OR条件：  
+```
+// WHERE name = 'dogstar' OR age = 18
+$user->or('name', 'dogstar')->or('age', 18)
+```
+
+嵌套条件：  
+```
+// WHERE ((name = ? OR id = ?)) AND (note = ?) -- 'dogstar', '1', 'xxx'
+
+// 实现方式1：使用AND拼接
+$user->where('(name = ? OR id = ?)', 'dogstar', '1')->and('note = ?', 'xxx')
+
+// 实现方式2：使用WHERE，并顺序传递多个参数
+$user->where('(name = ? OR id = ?) AND note = ?', 'dogstar', '1', 'xxx')
+
+// 实现方式3：使用WHERE，并使用一个索引数组顺序传递参数
+$user->where('(name = ? OR id = ?) AND note = ?', array('dogstar', '1', 'xxx'))
+
+// 实现方式4：使用WHERE，并使用一个关联数组传递参数
+$user->where('(name = :name OR id = :id) AND note = :note', array(':name' => 'dogstar', ':id' => '1', ':note' => 'xxx'))
+```
+
+IN查询：  
+```
+// WHERE id IN (1, 2, 3)
+$user->where('id', array(1, 2, 3))
+
+// WHERE id NOT IN (1, 2, 3)
+$user->where('NOT id', array(1, 2, 3))
+
+// WHERE (id, age) IN ((1, 18), (2, 20))
+$user->where('(id, age)', array(array(1, 18), array(2, 20)))
+```
+
+模糊匹配查询：  
+```
+// WHERE name LIKE '%dog%'
+$user->where('name LIKE ?', '%dog%')
+```
+> 温馨提示：需要模糊匹配时，不可写成：where('name LIKE %?%', 'dog')。  
+
+NULL判断查询：
+```
+// WHERE (name IS NULL)
+$user->where('name', null)
+```
+
+非NULL判断查询：  
+```
+// WHERE (name IS NOT ?) LIMIT 1; -- NULL
+$user->where('name IS NOT ?', null)
+```
+
+ + **ORDER BY排序**  
+
+单个字段升序排序： 
+```
+// ORDER BY age
+$user->order('age')
+$user->order('age ASC')
+
+单个字段降序排序： 
+```
+// ORDER BY age DESC
+$user->order('age DESC')
+```
+  
+多个字段排序：  
+```
+// ORDER BY id, age DESC
+$user->order('id')->order('age DESC')
+$user->order('id, age DESC')
+```
+
+ + **LIMIT数量限制**
+
+限制数量，如查询前10个：  
+```
+// LIMIT 10
+$user->limit(10)
+```
+
+分页限制,如从第5个位置开始，查询前10个：  
+```
+// LIMIT 5, 10
+$user->limit(5, 10)
+```
+
+ + **GROUP BY和HAVING**
+
+只有GROUP BY，没有HAVING：  
+```
+// GROUP BY note
+$user->group('note')
+```
+  
+既有GROUP BY，又有HAVING：
+```
+// GROUP BY note HAVING age > 10
+$user->group('note', 'age > 10')
+```
+
+#### (2) CURD之查询操作（Retrieve）
+
+查询操作主要有获取一条纪录、获取多条纪录以及聚合查询等。  
+
+操作|说明|示例|备注|是否PhalApi新增
+---|---|---|---|---
+fetch()|循环获取每一行|while($row = $user->fetch()) { //... }||否
+fetchOne()|只获取第一行|$row = $user->where('id', 1)->fetchOne();|等效于fetchRow()|是
+fetchRow()|只获取第一行|$row = $user->where('id', 1)->fetchRow();|等效于fetchOne()|是
+fetchPairs()|获取键值对|$row = $user->fetchPairs('id', 'name');|第二个参数为空时，可取多个值，并且多条纪录|否
+fetchAll()|获取全部的行|$rows = $user->where('id', array(1, 2, 3))->fetchAll();|等效于fetchRows()|是
+fetchRows()|获取全部的行|$rows = $user->where('id', array(1, 2, 3))->fetchRows();|等效于fetchAll()|是
+queryAll()|复杂查询下获取全部的行，默认下以主键为下标|$rows = $user->queryAll($sql, $parmas);|等效于queryRows()|是
+queryRows()|复杂查询下获取全部的行，默认下以主键为下标|$rows = $user->queryRows($sql, $parmas);|等效于queryAll()|是
+count()|查询总数|$total = $user->count('id');|第一参数可省略|否
+min()|取最小值|$minId = $user->min('id');||否
+max()|取最大值|$maxId = $user->max('id');||否
+sum()|计算总和|$sum = $user->sum('age');||否
+
+表2-11 数据库查询操作  
+
+循环获取每一行，并且同时获取多个字段：  
+```
+// SELECT id, name FROM tbl_user WHERE (age > 18);
+$user = $user->select('id, name')->where('age > 18');
+while ($row = $user->fetch()) {
+     var_dump($row);
+}
+
+// 输出
+array(2) {
+  ["id"]=>
+  string(1) "2"
+  ["name"]=>
+  string(3) "Tom"
+}
+array(2) {
+  ["id"]=>
+  string(1) "3"
+  ["name"]=>
+  string(4) "King"
+}
+```
+
+循环获取每一行，并且只获取单个字段。需要注意的是，指定获取的字段，必须出现在select里，并且返回的不是数组，而是字符串。  
+```
+// SELECT id, name FROM tbl_user WHERE (age > 18);
+$user = $user->select('id, name')->where('age > 18');
+while ($row = $user->fetch('name')) {
+     var_dump($row);
+}
+
+// 输出
+string(3) "Tom"
+string(4) "King"
+```
+
+注意！以下是错误的用法，因为这里每次循环都会新建一个NotORM表实例，从而死循环。  
+```
+while ($row = DI()->notorm->user->select('id, name')->where('age > 18')->fetch('name')) {
+     var_dump($row);
+}
+```
+
+只获取第一行，并且获取多个字段，等同于fetchRow()操作。  
+```
+// SELECT id, name FROM tbl_user WHERE (age > 18) LIMIT 1;
+$rs = $user->select('id, name')->where('age > 18')->fetchOne();
+var_dump($rs);
+
+// 输出
+array(2) {
+  ["id"]=>
+  string(1) "2"
+  ["name"]=>
+  string(3) "Tom"
+}
+```
+
+只获取第一行，并且只获取单个字段，等同于fetchRow()操作。   
+```
+var_dump($user->fetchOne('name'));  
+
+// 输出 
+string(3) "Tom"
+```
+
+获取键值对，并且获取多个字段：  
+```
+// SELECT id, name, age FROM tbl_user LIMIT 2;
+$rs = $user->select('name, age')->limit(2)->fetchPairs('id'); //指定以ID为KEY
+var_dump($rs);
+
+// 输出
+array(2) {
+  [1]=>
+  array(3) {
+    ["id"]=>
+    string(1) "1"
+    ["name"]=>
+    string(7) "dogstar"
+    ["age"]=>
+    string(2) "18"
+  }
+  [2]=>
+  array(3) {
+    ["id"]=>
+    string(1) "2"
+    ["name"]=>
+    string(3) "Tom"
+    ["age"]=>
+    string(2) "21"
+  }
+}
+```
+
+获取键值对，并且只获取单个字段。注意，这时的值不是数组，而是字符串。  
+```
+// SELECT id, name FROM tbl_user LIMIT 2
+var_dump($user->limit(2)->fetchPairs('id', 'name')); //通过第二个参数，指定VALUE的列
+
+// 输出
+array(2) {
+  [1]=>
+  string(7) "dogstar"
+  [2]=>
+  string(3) "Tom"
+}
+```
+
+获取全部的行，相当于fetchRows()操作。  
+```
+// SELECT * FROM tbl_user
+var_dump($user->fetchAll());  
+
+// 输出全部表数据，结果略
+```
+
+使用原生SQL语句进行查询，并获取全部的行：  
+```
+// SELECT name FROM tbl_user WHERE age > :age LIMIT 1
+$sql = 'SELECT name FROM tbl_user WHERE age > :age LIMIT 1';
+$params = array(':age' => 18);
+$rs = $user->queryAll($sql, $params);
+var_dump($rs);
+
+// 输出
+array(1) {
+  [0]=>
+  array(1) {
+    ["name"]=>
+    string(3) "Tom"
+  }
+}
+
+// 除了使用上面的关联数组传递参数，也可以使用索引数组传递参数
+$sql = 'SELECT name FROM tbl_user WHERE age > ? LIMIT 1';
+$params = array(18);
+$rs = $user->queryRows($sql, $params); //使用queryRows()别名
+```
+请注意：使用上面这种方式进行查询，需要手动填写完整的表名字，并且需要通过某个表的实例来运行。  
+
+查询最小值：  
+```
+// SELECT MIN(age) FROM tbl_user
+var_dump($user->min('age'));
+
+// 输出
+string(2) "18"
+```
+
+查询最大值：  
+```
+// SELECT MAX(age) FROM tbl_user
+var_dump($user->max('age'));
+
+// 输出
+string(3) "100"
+```
+
+计算总和：
+```
+// SELECT SUM(age) FROM tbl_user
+var_dump($user->sum('age'));
+
+// 输出
+string(3) "139"
+```
+
+查询总数：  
+```
+// SELECT COUNT(id) FROM tbl_user
+var_dump($user->sum('id'));
+
+// 输出
+string(3) "3"
+```
 
 ### 2.5.4 事务操作与关联查询
+
 ### 2.5.5 分表策略
 ### 2.5.6 扩展你的项目
 #### (1) 主从数据库的配置
@@ -2496,4 +2876,3 @@ DI()->notormSlave = function() {
 
 
 ## 2.9 国际化
-
