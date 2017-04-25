@@ -2607,6 +2607,7 @@ $user->where('name IS NOT ?', null)
 // ORDER BY age
 $user->order('age')
 $user->order('age ASC')
+```
 
 单个字段降序排序： 
 ```
