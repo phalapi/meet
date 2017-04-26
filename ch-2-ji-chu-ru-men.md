@@ -3135,7 +3135,265 @@ var_dump($rows);
 
 注意，此时的表需要使用全名，即自带前缀。这样也可以实现更自由的关联查询。   
 
-### 2.5.5 分表策略
+### 2.5.5 分表分库策略
+
+为了应对海量用户的产品愿景需求，PhalApi设计了一个分布式的数据库存储方案，以便能满足数据量的骤增、云服务的横向扩展、接口服务开发的兼容性，以及数据迁移等问题，避免日后因为全部数据都存放在单台服务器而导致的限制。  
+
+#### (1) 海量数据的分表策略
+
+分表策略，即是通过可配置的路由规则，将海量的数据分散存储在多个数据库表。主要涉及的内容有：  
+
+ + 分库分表  
+对于不需要进行必要关联查询的数据库表，进行分库分表存放。即对于同一张数据库表，若存放的数据量是可预见式的暴增，例如每时每刻都会产生大量的来自用户发布的事件信息，为了突破 数据库单表的限制以及其他问题，需要将此数据库表创建多个副本，并按照一定规则进行拆分存放。  
+
+ + 路由规则  
+在进行了分库分表后，开发人员在对数据库表进行操作时，就需要根据相应的规则找到对应的数据库和数据库表，即需要有一个参考主键。这里建议每个表都需要有数值类型的主键字段，以便作为分表的参考。  
+
+ + 扩展字段  
+在完成了分库分表和制定路由规则后，考虑到日后有新增表字段而导致数据库表结构的变更。为了减少数据库变更对现有数据库表的影响，这里建议每个表都增加text类型的extra_data字段，并且使用JSON格式进行序列化转换存储。
+
+ + 可配置  
+在有了多台数据库服务器以及每个表都拆分成多张表后，为减少后端接口开发人员的压力，有必须提供可配置的支持。即：数据库的变更不应影响开发人员现有的开发，也不需要开发人员作出代码层面的改动，只需要稍微配置一下即可。  
+
+ + 自动生成SQL语句  
+对于相同表的建表语句，可以通过脚本来自动生成，然后直接导入数据即可，避免人工重复编辑维护SQL建表语句。  
+
+PhalApi框架主要提供了**表名 + ID**与**数据库服务器 + 数据库表**之间的映射规则。  
+
+下面结合一个示例，讲解如何使用分表策略。假设我们有一个需要数据库分表的demo表，且各个表所映射的数据库实例如下。  
+
+数据库表|数据库实例
+---|---
+tbl_demo|db_demo
+tbl_demo_0|db_demo
+tbl_demo_1|db_demo
+tbl_demo_2|db_demo
+
+表2-15 demo分表示例  
+
+首先，需要配置数据库的路由规则。这里的demo表存储比较简单，即有3张分表tbl_demo_0、tbl_demo_1、tbl_demo_2，缺省主表tbl_demo是必要的，当分表不存在时将会使用该缺省主表。数据库的路由规则在前面所说的数据库配置文件./Config/dbs.php中，其中tables为数据库表的配置信息以及与数据库实例的映射关系。因此可以在tables选项中添加此demo表的相关配置。  
+```
+return array(
+    ... ...
+    'tables' => array(    
+        'demo' => array(
+            'prefix' => 'tbl_',
+            'key' => 'id',
+            'map' => array(
+                array('db' => 'db_demo'),
+                array('start' => 0, 'end' => 2, 'db' => 'db_demo'),
+            ),
+        ),
+    ),
+);
+```
+上面配置map选项中```array('db' => 'db_demo')```用于指定缺省主表使用db_demo数据库实例，而下一组映射关系则是用于配置连续在同一台数据库实例的分表区间，即tbl_demo_0、tbl_demo_1、tbl_demo_2都使用了db_demo数据库实例。  
+
+这里再侧重讲解一下map选项。map选项用于配置数据库表与数据库实例之前的映射关系，通俗来说就是指定哪张表使用哪个数据库。不管是否使用分表存储，都至少需要配置默认缺省主表。如：  
+```
+'map' => array(
+    array('db' => 'db_demo'),
+)
+```
+缺省主表的配置很简单，只需要配置使用哪个数据库实例即可。而当需要使用分表时，则要增加相应的映射关系配置。通常分表以“下划线 + 连续的自然数”为后缀，作为分表的标识。在配置时，对于使用同一个数据库实例的分表区间，可以配置成一组，并使用start下标和end下标来指定分表闭区间：[start, end]。如上面示例中，[0, 2]这一区间的分表使用了db_demo这一数据库实例，则可以添加配置成：  
+```
+'map' => array(
+    array('db' => 'db_demo'),
+    array('start' => 0, 'end' => 2, 'db' => 'db_demo'),
+)
+```
+假设，对于tbl_demo_2分表，需要调整成使用数据库实例db_new，则可能调整配置成：  
+```
+'map' => array(
+    array('db' => 'db_demo'),
+    array('start' => 0, 'end' => 1, 'db' => 'db_demo'),
+    array('start' => 2, 'end' => 2, 'db' => 'db_new'),
+)
+```
+
+配置好路由规则后，就可以使用脚本命令生成建表语句。把数据库表的基本建表语句保存到./Data目录下，文件名与数据库表名相同，后缀统一为“.sql”。如这里的./Data/demo.sql文件。  
+```
+`name` varchar(11) DEFAULT NULL,
+```
+需要注意的是，这里说的基本建表语句是指：仅是这个表所特有的字段，排除已固定公共有的自增主键id、扩展字段ext_data和CREATE TABLE关键字等。  
+
+然后可以使用phalapi-buildsqls脚本命令，快速自动生成demo缺省主表和全部分表的建表SQL语句。如下： 
+```
+$ ./PhalApi/phalapi-buildsqls ./Config/dbs.php demo
+```  
+正常情况下，会生成类似以下的SQL语句：  
+```
+CREATE TABLE `demo` (
+    `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+    `name` varchar(11) DEFAULT NULL,
+    `ext_data` text COMMENT 'json data here',
+     PRIMARY KEY (`id`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            
+CREATE TABLE `tpl_demo_0` ... ...;
+CREATE TABLE `tpl_demo_1`  ... ...;
+CREATE TABLE `tpl_demo_2`  ... ...;
+```
+
+在将上面的SQL语句导入数据库后，或者手动创建数据库表后，便可以像之前那样操作数据库了。下面是一些大家已经熟悉的示例：  
+```
+DI()->notorm->demo->where('id', '1')->fetch();
+```
+
+假设分别的规则是根据ID对3进行求余。当需要使用分表时，在使用Model基类的情况下，可以通过重载```PhalApi_Model_NotORM::getTableName($id)```实现相应的分表规则。  
+```
+// $ vim ./Shop/Model/demo.php
+<?php
+class Model_Demo extends PhalApi_Model_NotORM {
+
+    protected function getTableName($id) {
+        $tableName = 'demo';
+        if ($id !== null) {
+            $tableName .= '_' . ($id % 3);
+        }
+        return $tableName;
+    }
+}
+```
+
+然后，便可使用之前一样的CURD基本操作，但框架会自动匹配分表的映射。例如：    
+```
+$model = new Model_Demo();
+
+$row = $model->get('3', 'id');   // 使用分表tbl_demo_0
+$row = $model->get('10', 'id');  // 使用分表tbl_demo_1
+$row = $model->get('2', 'id');   // 使用分表tbl_demo_2
+```
+
+当使用全局方式获取NotORM实例时，则需要手动指定分表。上面的操作等效于下面使用全局NotORM实例并指定分表的实现。  
+````
+$row = DI()->notorm->demo_0->where('id', '3')->fetch();
+$row = DI()->notorm->demo_1->where('id', '10')->fetch();
+$row = DI()->notorm->demo_2->where('id', '2')->fetch();
+```
+
+回到使用Model基类的上下文，更进一步，我们可以通过```$this->getORM($id)```来获取分表的实例从而进行分表的操作。如：  
+```
+<?php
+class Model_Demo extends PhalApi_Model_NotORM {
+    ... ...
+
+    public function getNameById($id) {
+        $row = $this->getORM($id)->select('name')->fetchRow();
+        return !empty($row) ? $row['name'] : '';
+    }
+}
+```
+通过传入不同的$id，即可获取相应的分表实例。  
+
+#### (2) 多个数据库的配置方式
+
+当需要使用多个数据库时，可以先在servers选项配置多组数据库实例，然后在tables选项中为不同的数据库表指定不同的数据库实例。  
+  
+假设我们有两台数据库服务器，分别叫做db_A、db_B，即：  
+```
+return array(
+    'servers' => array(
+        'db_A' => array(                              //db_A
+            'host'      => '192.168.0.1',             //数据库域名
+            ... ...
+        ),
+        'db_B' => array(                              //db_B
+            'host'      => '192.168.0.2',             //数据库域名
+            ... ...
+        ),
+    ),
+```
+  
+若db_A服务器中的数据库有表a_table_user、a_table_friends，而db_B服务器中的数据库有表b_table_article、b_table_comments，则：  
+```
+<?php
+return array(
+    ... ...
+    'tables' => array(
+        //通用路由
+        '__default__' => array(
+            'prefix' => 'a_',  //以 a_ 为表前缀
+            'key' => 'id',
+            'map' => array(
+                array('db' => 'db_A'),  //默认，使用db_A数据库
+            ),
+        ),
+
+        'table_article' => array(                                     //表b_table_article
+            'prefix' => 'b_',                                         //表名前缀
+            'key' => 'id',                                            //表主键名
+            'map' => array(                                           //表路由配置
+                array('db' => 'db_B'),                                // b_table_article表使用db_B数据库
+            ),
+        ),
+
+        'table_comments' => array(                                    //表b_table_article
+            'prefix' => 'b_',                                         //表名前缀
+            'key' => 'id',                                            //表主键名
+            'map' => array(                                           //表路由配置
+                array('db' => 'db_B'),                                // b_table_comments表使用db_B数据库
+            ),
+        ),
+    ),
+    
+```
+  
+如果项目存在分表的情况，可结合上述的分表的说明再进行配置。为了让大家更容易明白，假设db_A服务器中的数据库有表a_table_user、a_table_friends_0到a_table_friends_9（共10张表），而db_B服务器中的数据库有表b_table_article、b_table_comments_0到b_table_comments_19（共20张表），则结合起来的完整配置为：  
+```
+<?php
+return array(
+    ... ...
+    'tables' => array(
+        //通用路由
+        '__default__' => array(
+            'prefix' => 'a_',  //以 a_ 为表前缀
+            'key' => 'id',
+            'map' => array(
+                array('db' => 'db_A'),  //默认，使用db_A数据库
+            ),
+        ),
+
+        'table_friends' => array(                                     //分表配置
+            'prefix' => 'a_',                                         //表名前缀
+            'key' => 'id',                                            //表主键名
+            'map' => array(                                           //表路由配置
+                array('db' => 'db_A'),                                // b_table_comments表使用db_B数据库
+                array('start' => 0, 'end' => 9, 'db' => 'db_A'),      //分表配置（共10张表）
+            ),
+        ),
+
+        'table_article' => array(                                     //表b_table_article
+            'prefix' => 'b_',                                         //表名前缀
+            'key' => 'id',                                            //表主键名
+            'map' => array(                                           //表路由配置
+                array('db' => 'db_B'),                                // b_table_article表使用db_B数据库
+            ),
+        ),
+
+        'table_comments' => array(                                    //表b_table_article
+            'prefix' => 'b_',                                         //表名前缀
+            'key' => 'id',                                            //表主键名
+            'map' => array(                                           //表路由配置
+                array('db' => 'db_B'),                                // b_table_comments表使用db_B数据库
+                array('start' => 0, 'end' => 19, 'db' => 'db_B'),     //分表配置（共20张表）
+            ),
+        ),
+    ),
+);
+```
+通过这样简单配置，即可完成对多个数据库的配置，其他代码层面上对数据库的操作保持不变。  
+
+#### (3) 不足与注意点
+
+这样的设计是有明显的灵活性的，因为在后期如果需要迁移数据库服务器，我们可以在框架支持的情况下轻松应对，但依然需要考虑到一些问题和不足。  
+
+ + DB变更  
+DB变更，这块是必不可少的，但一旦数据库表被拆分后，表数量的骤增导致变更执行困难，所以这里暂时使用了一个折中的方案，即提供了一个ext_data 扩展字段用于存放后期可能需要的字段信息，建议采用json格式，因为通用且长度比序列化的短。但各开发可以根据自己的需要决定格式。即使如此，扩展字段 明显做不到一些SQL的查询及其他操作。
+
+ + 表之间的关联查询  
+表之间的关联查询，这个是分拆后的最大问题。虽然这样的代价是我们可以得到更庞大的存储设计， 而且很多表之间不需要必须的关联的查询，即使需要，也可以通过其他手段如缓存和分开查询来实现。这对开发人员有一定的约束，但是对于可预见性的海量数量，这又是必须的。
+
 ### 2.5.6 扩展你的项目
 #### (1) 主从数据库的配置
 
