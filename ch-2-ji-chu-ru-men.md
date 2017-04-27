@@ -3125,9 +3125,9 @@ $model->delete(1);
 
 通过对比，可以发现，使用继承于PhalApi_Model_NotORM基类的写法更简单，并且更统一，而且能更好地封装对数据库的操作。因此，我们通常推荐使用此实现方式。
 
-### 2.5.4 事务操作与关联查询
+### 2.5.4 事务操作、关联查询和其他操作
 
- + **事务操作**
+#### (1) 事务操作
 
 关于事务的操作，可以使用NotORM的方式。例如：  
 
@@ -3162,7 +3162,7 @@ DI()->notorm->transaction = 'COMMIT';
     //DI()->notorm->rollback('db_demo');
 ```
 
- + **关联查询**  
+#### (2) 关联查询
 
 对于关联查询，简单的关联可使用NotORM封装的方式，而复杂的关联，如多个表的关联查询，则可以使用PhalApi封装的接口。  
 
@@ -3170,7 +3170,7 @@ DI()->notorm->transaction = 'COMMIT';
   
 以下是一个简单的示例。假设我们有这样的数据：  
 ```
-INSERT INTO `phalapi_user` VALUES ('1', 'wx_edebc877070133c65161d00799e00544', 'weixinName', '******', '4CHqOhe1Jxi3X9HmRfPOXygDnU267eCA', '1431790647', 'phpunit.png');
+INSERT INTO `phalapi_user` VALUES ('1', 'wx_edebc', 'dogstar', '***', '4CHqOhe1', '1431790647', '');
 INSERT INTO `phalapi_user_session_0` VALUES ('1', '1', 'ABC', '', '0', '0', '0', null);
 ``` 
   
@@ -3194,18 +3194,18 @@ array(3) {
   ["expires_time"]=>
   string(1) "0"
   ["username"]=>
-  string(35) "wx_edebc877070133c65161d00799e00544"
+  string(35) "wx_edebc"
   ["nickname"]=>
-  string(10) "weixinName"
+  string(10) "dogstar"
 }
 ```
   
 这样，我们就可以实现关联查询的操作。按照NotORM官网的说法，则是：  
 > If the dot notation is used for a column anywhere in the query ("$table.$column") then NotORM automatically creates left join to the referenced table. Even references across several tables are possible ("$table1.$table2.$column"). Referencing tables can be accessed by colon: $applications->select("COUNT(application_tag:tag_id)").
   
-->select('expires_time, user.username, user.nickname')这一行调用将会【自动产生关联操作】，而ON 的字段，则是这个字段关联你配置的【表结构】，外键默认为： 表名_id 。
+所以```->select('expires_time, user.username, user.nickname')```这一行调用将会NotORM自动产生关联操作，而ON的字段，则是这个字段关联你配置的表结构，外键默认为：表名_id 。
 
-如果是复杂的关联查询，则是建议使用原生态的SQL语句，但仍然可以保持很好的写法，如这样一个示例：
+如果是复杂的关联查询，则是建议使用原生的SQL语句，但仍然可以保持很好的写法，如这样一个示例：
 ```
 $sql = 'SELECT t.id, t.team_name, v.vote_num '
     . 'FROM phalapi_team AS t LEFT JOIN phalapi_vote AS v '
@@ -3215,7 +3215,16 @@ $sql = 'SELECT t.id, t.team_name, v.vote_num '
 $rows = $this->getORM()->queryAll($sql, array());
 var_dump($rows);
 ```
+如前面所述，这里需要手动填写完整的表名，以及慎防SQL注入攻击。  
 
+#### (3) 其他数据库操作
+
+有时，我们还需要进行一些其他的数据库操作，如创建表、删除表、添加表字段等。对于需要进行的数据库操作，而上面所介绍的方法未能满足时，可以使用更底层更通用的接口，即：```NotORM_Result::query($query, $parameters)```。  
+
+例如，删除一张表。    
+```
+DI()->notorm->user->query('DROP TABLE tbl_user', array());
+```
 
 ### 2.5.5 分表分库策略
 
