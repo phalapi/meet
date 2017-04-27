@@ -2320,8 +2320,8 @@ NotORM是一个优秀的开源PHP类库，可用于操作数据库。PhalApi的�
 
 在PhalApi中获取NotORM实例，有两种方式：全局获取方式、局部获取方式。  
 
- + 1、全局获取：在任何地方，使用DI容器中的全局notorm服务：```DI()->notorm```  
- + 2、局部获取：在继承PhalApi_Model_NotORM的子类中使用：```$this->getORM()```
+ + **全局获取**：在任何地方，使用DI容器中的全局notorm服务：```DI()->notorm```  
+ + **局部获取**：在继承PhalApi_Model_NotORM的子类中使用：```$this->getORM()```
 
 第一种全局获取的方式，可以用于任何地方，这是因为我们已经在初始化文件中注册了```DI()->notorm```这一服务。  
 ```
@@ -2347,6 +2347,53 @@ class Model_User extends PhalApi_Model_NotORM {
 ```
 与全局获取方式不同的是，```$this->getORM()```获取的就已经是表实例，不需要再在后面添加表名。  
 
+#### (2) Model基类中的表名配置
+
+上面继承了PhalApi_Model_NotORM的Model_User类，对应默认的表名为：user。默认表名的自动匹配规则是：取“Model_”后面部分的字符全部转小写，并且在转化后会加上配置的表前缀。下面是更多Model子类及其自动映射的表名示例。  
+```
+// 对应userinfo表
+class Model_UserInfo extends PhalApi_Model_NotORM { }
+
+// 对应app_settings表
+class Model_App_Settings extends PhalApi_Model_NotORM { }
+
+// 对应tags表
+class Model_Tags extends PhalApi_Model_NotORM { }
+``` 
+
+但在以下场景或者其他需要手动指定表名的情况，可以重载```PhalApi_Model_NotORM::getTableName($id)```方法并手动指定表名。  
+
+ + 自动匹配的表名与实际表名不符
+ + 存在分表
+ + Model类名不含有“Model_”
+ + 数据库表使用蛇形命名法而类名使用大写字母分割的方式
+ 
+如，当Model_User类对应的表名为：my_user表时，可这样重新指定表名： 
+```
+<?php
+class Model_User extends PhalApi_Model_NotORM {
+    protected function getTableName($id) {
+        return 'my_user'; 
+    }
+}
+```
+其中，$id参数用于进行分表的参考主键，只有当存在分表时才需要用到。通常传入的$id是整数，然后对分表的总数进行求余从而得出分表标识。例如有10张分表的user_session表：  
+```
+<?php
+class Model_User_UserSession extends PhalApi_Model_NotORM {
+    const TABLE_NUM = 10;
+
+    protected function getTableName($id) {
+        $tableName = 'user_session';
+        if ($id !== null) {
+            $tableName .= '_' . ($id % self::TABLE_NUM);
+        }
+        return $tableName;
+    }
+```
+即存在分表时，需要返回的格式为：表名称 + 下划线 + 分表标识。分表标识通常从0开始，为连续的自然数。  
+
+#### (3) NotORM实例状态
 使用NotORM时，值得注意的是，NotORM的实例是有内部状态的，即可以保持操作状态。故而在开发过程中，需要特别注意何时需要保留状态（使用同一个实例）、何时不需要保留状态（使用不同的实例）。 
 
 需要保留状态时，需要使用同一个实例。例如： 
@@ -2375,25 +2422,6 @@ $user->where('name LIKE ?', '%dog%');
 
 关于这两者的使用场景，项目可根据情况选用，通常使用不保留状态的写法。  
 
-#### (2) Model基类中的表名配置
-
-上面继承了PhalApi_Model_NotORM的Model_User类，对应默认的表名为：user。默认表名的自动匹配规则是：取“Model_”后面部分的字符全部转小写，并且在转化后会加上配置的表前缀。 
-
-但在以下场景或者其他需要手动指定表名的情况，可以重载```PhalApi_Model_NotORM::getTableName($id)```方法并手动指定表名。  
-
- + 自动匹配的表名与实际表名不符
- + 存在分表
- + Model类名不含有“Model_”
- 
-如，当Model_User类对应的表名为：my_user表时，可这样重新指定表名： 
-```
-<?php
-class Model_User extends PhalApi_Model_NotORM {
-    protected function getTableName($id) {
-        return 'my_user'; 
-    }
-}
-```
 
 ### 2.5.2 数据库配置
 
