@@ -3510,8 +3510,28 @@ $model = new Model_User();
 // 带有ext_data的更新
 $extData = array('level' => 3, 'coins' => 256);
 $data = array('name' => 'test', 'update_time' => time(), 'ext_data' => $extData);
-$model->update(1, $data); //基于主键的快速更新
+// 基于主键的快速更新
+$model->update(1, $data); 
 ```
+
+ + **分表下的主键设定**  
+
+在存在分表过多的情况下，框架会根据配置自动匹配不同表的不同主键配置。因为Model基类中的CURD基本操作是基于主键进行的，所以这里的问题就演变成了如何快速找到表的主键名。  
+
+当然，这里是可以继续使用框架默认的自动匹配算法。若表主键是固定且统一的，为了提升性能，可重载```PhalApi_Model_NotORM::getTableKey($table)```方法来指定主键名。  
+  
+例如，全部表的主键都固定为id时：  
+```
+<?php
+abstract class Common_Model_NotORM extends PhalApi_Model_NotORM {
+
+    protected function getTableKey($table) {
+        return 'id';
+    }
+}
+```
+
+当有其他场景需要时，也可以定制自己的Model基类。通过提供自己的层超类，封装一些项目中公共的操作，以简化项目开发。
 
 ## 2.6 缓存策略
 
