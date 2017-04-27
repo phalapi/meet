@@ -3279,7 +3279,7 @@ $row = $model->get('2', 'id');   // 使用分表tbl_demo_2
 ```
 
 当使用全局方式获取NotORM实例时，则需要手动指定分表。上面的操作等效于下面使用全局NotORM实例并指定分表的实现。  
-````
+```
 $row = DI()->notorm->demo_0->where('id', '3')->fetch();
 $row = DI()->notorm->demo_1->where('id', '10')->fetch();
 $row = DI()->notorm->demo_2->where('id', '2')->fetch();
