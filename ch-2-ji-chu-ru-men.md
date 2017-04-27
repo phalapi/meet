@@ -2305,12 +2305,14 @@ NotORM是一个优秀的开源PHP类库，可用于操作数据库。PhalApi的�
 
 > 参考：NotORM官网：[www.notorm.com](http://www.notorm.com/)。 
 
-但为了更符合接口类项目的开发，PhalApi对NotORM的底层进行优化和调整。以下改动点包括但不限于：  
+所以，如果了解NotORM的使用，自然而然对PhalApi中的数据库操作也就一目了然了。但为了更符合接口类项目的开发，PhalApi对NotORM的底层进行优化和调整。以下改动点包括但不限于：  
 
- + 将原来返回的结果全部从对象类型改成数组类型
- + 添加查询多条纪录的接口：NotORM_Result::fetchAll()和NotORM_Result::fetchRows()
- + 添加支持原生SQL语句查询的接口：NotORM_Result::queryAll()和NotORM_Result::queryRows()
+ + 将原来返回的结果全部从对象类型改成数组类型，便于数据流通
+ + 添加查询多条纪录的接口：```NotORM_Result::fetchAll()```和```NotORM_Result::fetchRows()```
+ + 添加支持原生SQL语句查询的接口：```NotORM_Result::queryAll()```和```NotORM_Result::queryRows()```
  + limit 操作的调整，取消原来OFFSET关键字的使用
+ + 当数据库操作失败时，抛出PDOException异常
+ + 将结果集中以主键作为下标改为以顺序索引作为下标
  + 禁止全表删除，防止误删
  + 调整调试模式
 
@@ -2318,7 +2320,7 @@ NotORM是一个优秀的开源PHP类库，可用于操作数据库。PhalApi的�
 
 在PhalApi中获取NotORM实例，有两种方式：全局获取方式、局部获取方式。  
 
- + 1、全局获取：使用DI容器中的全局notorm服务：```DI()->notorm```  
+ + 1、全局获取：在任何地方，使用DI容器中的全局notorm服务：```DI()->notorm```  
  + 2、局部获取：在继承PhalApi_Model_NotORM的子类中使用：```$this->getORM()```
 
 第一种全局获取的方式，可以用于任何地方，这是因为我们已经在初始化文件中注册了```DI()->notorm```这一服务。  
@@ -2338,12 +2340,14 @@ class Model_User extends PhalApi_Model_NotORM {
     }
 
     public function doSth() {
-        $user = $this->getORM(); //获取NotORM表实例
+        // 获取NotORM表实例，在这里相当于：DI()->notorm->user
+        $user = $this->getORM(); 
     }
 }
 ```
+与全局获取方式不同的是，```$this->getORM()```获取的就已经是表实例，不需要再在后面添加表名。  
 
-值得注意的是，NotORM的实例是有内部状态的，因为在开发过程中，需要特别注意何时需要保留状态（使用同一个实例）、何时不需要保留状态。 
+使用NotORM时，值得注意的是，NotORM的实例是有内部状态的，即可以保持操作状态。故而在开发过程中，需要特别注意何时需要保留状态（使用同一个实例）、何时不需要保留状态（使用不同的实例）。 
 
 保留状态的写法： 
 ```
