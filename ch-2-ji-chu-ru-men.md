@@ -2396,20 +2396,20 @@ class Model_User_UserSession extends PhalApi_Model_NotORM {
 这里小结一下，对于使用Model子类的方式，可以使用默认自动匹配的表名。若表名不符合项目的需求，可以通过重载```PhalApi_Model_NotORM::getTableName($id)```方法手动指定。最后，若存在有分表，则需要结合$id参数，按一定的规则，拼接返回分表格式的表名。
 
 #### (3) NotORM实例状态
-使用NotORM时，值得注意的是，NotORM的实例是有内部状态的，即可以保持操作状态。故而在开发过程中，需要特别注意何时需要保留状态（使用同一个实例）、何时不需要保留状态（使用不同的实例）。 
+使用NotORM时，值得注意的是，NotORM的实例是有内部状态的，即可以保持操作状态。故而在开发过程中，需要特别注意何时需要保留状态（使用同一个实例），何时不需要保留状态（使用不同的实例）。 
 
-需要保留状态时，需要使用同一个实例。例如： 
+希望保留状态时，需要使用同一个实例。例如： 
 ```
 // 获取一个新的实例
 $user = DI()->notorm->user;  
 $user->where('age > ?', 18);
 
-// 相当于age > 18 AND name LIKE '%dog%'
+// 相当于：age > 18 AND name LIKE '%dog%'
 $user->where('name LIKE ?', '%dog%');  
 ```
 可以看到，第二次查询后，会把前面的查询条件也累加上。  
 
-不保留状态时，需要每次使用新的实例。例如： 
+不希望保留状态时，需要每次使用新的实例。例如： 
 ```
 // 获取一个新的实例
 $user = DI()->notorm->user;  
@@ -2417,17 +2417,17 @@ $user->where('age > ?', 18);
 
 // 重新获取新的实例
 $user = DI()->notorm->user;  
-// 此时只有 name LIKE '%dog%'
+// 此时只有：name LIKE '%dog%'
 $user->where('name LIKE ?', '%dog%');  
 ```
 因为每次都是使用新的实例，所以不会出现条件叠加的情况。  
 
-关于这两者的使用场景，项目可根据情况选用，通常使用不保留状态的写法。  
+关于这两者的使用场景，项目可根据情况选用，通常使用不保留状态的写法。在全局方式获取后并指定表名取得的表实例，和局部方式获取的表实例，每次都会返回新的表实例。  
 
 
 ### 2.5.2 数据库配置
 
-数据库的配置文件为./Config/dbs.php，默认使用MySQL数据库配置。servers选项用于配置数据库服务器相关信息，可以配置多组数据库实例，每组包括数据库的账号、密码、数据库名字等信息。不同的数据库实例，使用不同标识作为下标。　　
+数据库的配置文件为./Config/dbs.php，默认使用的是MySQL数据库，所以需要配置MySQL的连接信息。servers选项用于配置数据库服务器相关信息，可以配置多组数据库实例，每组包括数据库的账号、密码、数据库名字等信息。不同的数据库实例，使用不同标识作为下标。　　
 
 servers数据库配置项|说明
 ---|---
@@ -2438,15 +2438,15 @@ password|数据库密码
 port|数据库端口
 charset|数据库字符集
 
-表2-9 数据库配置项  
+表2-9 MySQL数据库配置项  
   
-tables选项用于配置数据库表的表前缀、主键字段和路由映射关系，可以配置多个表，下标使用不带表前缀的表名，其中```__default__```下标选项为缺省的数据库路由，即未配置的数据库表将使用这一份默认配置。  
+tables选项用于配置数据库表的表前缀、主键字段和路由映射关系，可以配置多个表，下标为不带表前缀的表名，其中```__default__```下标选项为缺省的数据库路由，即未配置的数据库表将使用这一份默认配置。  
 
 tables表配置项|说明
 ---|---
 prefix|表前缀
 key|表主键
-map|数据库实例映射关系，可配置多组。每组格式为：```array('db' => 服务器标识, 'start' => 开始分表标识, 'end' => 结束分表标识)```  
+map|数据库实例映射关系，可配置多组。每组格式为：```array('db' => 服务器标识, 'start' => 开始分表标识, 'end' => 结束分表标识)```，start和end要么都不提供，要么都提供  
 
 表2-10 表配置项  
 
@@ -2482,9 +2482,9 @@ return array(
     ),
 );
 ```
-其中，在servers中配置了名称为db_demo数据库实例，其host为localhost，名称为phlapi，用户名为root等。在tables中，只配置了通用路由，并且表前缀为tbl_，主键均为id，并且全部使用db_demo数据库实例。  
+其中，在servers中配置了名称为db_demo数据库实例，其host为localhost，名称为phalapi，用户名为root等。在tables中，只配置了通用路由，并且表前缀为tbl_，主键均为id，并且全部使用db_demo数据库实例。  
 
-> 温馨提示：当tables中配置的数据库实例不存在servers中时，将会提示数据库配置错误。  
+> 温馨提示：当tables中配置的db数据库实例不存在servers中时，将会提示数据库配置错误。  
 
 #### 如何排查数据库连接错误？
 
@@ -2527,18 +2527,18 @@ INSERT INTO `tbl_user` VALUES ('2', 'Tom', '21', 'USA', '2015-12-08 09:42:38');
 INSERT INTO `tbl_user` VALUES ('3', 'King', '100', 'game', '2015-12-23 09:42:42');
 ```
 
-并且，假设已获得了tbl_user表对应的NotORM实例$user。此NotORM表实例可从两种方式获得：  
+并且，假设已获得了tbl_user表对应的NotORM实例$user。此NotORM表实例可从前面所介绍的两种方式获得：  
 ```
 // 全局获取方式
 $user = DI()->notorm->user;
 
-// 局部获取方式
+// 在Model_User类中的局部获取方式
 $user = $this->getORM();
 ```
 
 下面将结合示例，分别介绍如何使用NotORM表实例进行基本的数据库操作。
 
-#### (1) SQL基本语句
+#### (1) SQL基本语句介绍
 
  + **SELECT字段选择**  
 
@@ -2608,7 +2608,8 @@ $user->where('(name = ? OR id = ?) AND note = ?', 'dogstar', '1', 'xxx')
 $user->where('(name = ? OR id = ?) AND note = ?', array('dogstar', '1', 'xxx'))
 
 // 实现方式4：使用WHERE，并使用一个关联数组传递参数
-$user->where('(name = :name OR id = :id) AND note = :note', array(':name' => 'dogstar', ':id' => '1', ':note' => 'xxx'))
+$user->where('(name = :name OR id = :id) AND note = :note', 
+    array(':name' => 'dogstar', ':id' => '1', ':note' => 'xxx'))
 ```
 
 IN查询：  
@@ -2672,7 +2673,7 @@ $user->order('id, age DESC')
 $user->limit(10)
 ```
 
-分页限制,如从第5个位置开始，查询前10个：  
+分页限制，如从第5个位置开始，查询前10个：  
 ```
 // LIMIT 5, 10
 $user->limit(5, 10)
@@ -2854,6 +2855,15 @@ $rs = $user->queryRows($sql, $params); //使用queryRows()别名
 ```
 请注意：使用上面这种方式进行查询，需要手动填写完整的表名字，并且需要通过某个表的实例来运行。  
 
+查询总数：  
+```
+// SELECT COUNT(id) FROM tbl_user
+var_dump($user->sum('id'));
+
+// 输出
+string(3) "3"
+```
+
 查询最小值：  
 ```
 // SELECT MIN(age) FROM tbl_user
@@ -2879,15 +2889,6 @@ var_dump($user->sum('age'));
 
 // 输出
 string(3) "139"
-```
-
-查询总数：  
-```
-// SELECT COUNT(id) FROM tbl_user
-var_dump($user->sum('id'));
-
-// 输出
-string(3) "3"
 ```
 
 #### (3) CURD之插入操作（Create）
