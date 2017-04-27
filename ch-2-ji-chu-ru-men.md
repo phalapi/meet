@@ -2693,7 +2693,93 @@ $user->group('note')
 $user->group('note', 'age > 10')
 ```
 
-#### (2) CURD之查询操作（Retrieve）
+#### (2) CURD之插入操作（Create）
+
+插入操作可分为插入单条纪录、多条纪录，或根据条件插入。  
+
+操作|说明|示例|备注|是否PhalApi新增
+---|---|---|---|---
+insert()|插入数据|$user->insert($data);|原生态操作需要再调用insert_id()获取插入的ID|否
+insert_multi()|批量插入|$user->insert_multi($rows);|可批量插入|否
+insert_update()|插入/更新|接口签名：insert_update(array $unique, array $insert, array $update = array()|不存时插入，存在时更新|否
+
+表2-11 数据库插入操作  
+
+插入单条纪录数据，注意，必须是同一个NotORM表实例，方能获取到新插入的行ID，且表必须设置了自增主键ID。    
+```
+// INSERT INTO tbl_user (name, age, note) VALUES ('PhalApi', 1, 'framework')
+$data = array('name' => 'PhalApi', 'age' => 1, 'note' => 'framework');
+$user->insert($data);
+$id = $user->insert_id();
+var_dump($id); 
+
+// 输出：新增的ID
+int (4)
+
+// 或者使用Model封装的insert()方法
+$model = new Model_User();
+$id = $model->insert($data);
+var_dump($id);
+```
+
+批量插入多条纪录数据：  
+```
+// INSERT INTO tbl_user (name, age, note) VALUES ('A君', 12, 'AA'), ('B君', 14, 'BB'), ('C君', 16, 'CC')
+$rows = array(
+    array('name' => 'A君', 'age' => 12, 'note' => 'AA'),
+    array('name' => 'B君', 'age' => 14, 'note' => 'BB'),
+    array('name' => 'C君', 'age' => 16, 'note' => 'CC'),
+);
+$rs = $user->insert_multi($rows);
+var_dump($rs);
+
+// 输出，成功插入的条数
+int(3) 
+```
+
+插入/更新：
+```
+// INSERT INTO tbl_user (id, name, age, note) VALUES (8, 'PhalApi', 1, 'framework') ON DUPLICATE KEY UPDATE age = 2
+$unique = array('id' => 8);
+$insert = array('id' => 8, 'name' => 'PhalApi', 'age' => 1, 'note' => 'framework');
+$update = array('age' => 2);
+$rs = $user->insert_update($unique, $insert, $update);
+var_dump($rs); 
+
+// 输出影响的行数
+```
+
+#### (3) CURD之更新操作（Update）
+
+操作|说明|示例|备注|是否PhalApi新增
+---|---|---|---|---
+update()|更新数据|$user->where('id', 1)->update($data);|更新异常时返回false，数据无变化时返回0，成功更新返回1|否
+  
+表2-12 数据库更新操作  
+
+根据条件更新数据：  
+```
+// UPDATE tbl_user SET age = 2 WHERE (name = 'PhalApi');
+$data = array('age' => 2);
+$rs = $user->where('name', 'PhalApi')->update($data);
+var_dump($rs);
+
+// 输出
+int(1) //正常影响的行数
+int(0) //无更新，或者数据没变化
+boolean(false) //更新异常、失败
+```
+  
+更新数据，进行加1操作： 
+```
+// UPDATE tbl_user SET age = age + 1 WHERE (name = 'PhalApi')
+$rs = $user->where('name', 'PhalApi')->update(array('age' => new NotORM_Literal("age + 1")));
+var_dump($rs); 
+
+// 输出影响的行数
+```
+
+#### (4) CURD之查询操作（Retrieve）
 
 查询操作主要有获取一条纪录、获取多条纪录以及聚合查询等。  
 
@@ -2712,7 +2798,7 @@ min()|取最小值|$minId = $user->min('id');||否
 max()|取最大值|$maxId = $user->max('id');||否
 sum()|计算总和|$sum = $user->sum('age');||否
 
-表2-11 数据库查询操作  
+表2-13 数据库查询操作  
 
 循环获取每一行，并且同时获取多个字段：  
 ```
@@ -2911,92 +2997,6 @@ var_dump($user->sum('age'));
 
 // 输出
 string(3) "139"
-```
-
-#### (3) CURD之插入操作（Create）
-
-插入操作可分为插入单条纪录、多条纪录，或根据条件插入。  
-
-操作|说明|示例|备注|是否PhalApi新增
----|---|---|---|---
-insert()|插入数据|$user->insert($data);|原生态操作需要再调用insert_id()获取插入的ID|否
-insert_multi()|批量插入|$user->insert_multi($rows);|可批量插入|否
-insert_update()|插入/更新|接口签名：insert_update(array $unique, array $insert, array $update = array()|不存时插入，存在时更新|否
-
-表2-12 数据库插入操作  
-
-插入单条纪录数据，注意，必须是同一个NotORM表实例，方能获取到新插入的行ID，且表必须设置了自增主键ID。    
-```
-// INSERT INTO tbl_user (name, age, note) VALUES ('PhalApi', 1, 'framework')
-$data = array('name' => 'PhalApi', 'age' => 1, 'note' => 'framework');
-$user->insert($data);
-$id = $user->insert_id();
-var_dump($id); 
-
-// 输出：新增的ID
-int (4)
-
-// 或者使用Model封装的insert()方法
-$model = new Model_User();
-$id = $model->insert($data);
-var_dump($id);
-```
-
-批量插入多条纪录数据：  
-```
-// INSERT INTO tbl_user (name, age, note) VALUES ('A君', 12, 'AA'), ('B君', 14, 'BB'), ('C君', 16, 'CC')
-$rows = array(
-    array('name' => 'A君', 'age' => 12, 'note' => 'AA'),
-    array('name' => 'B君', 'age' => 14, 'note' => 'BB'),
-    array('name' => 'C君', 'age' => 16, 'note' => 'CC'),
-);
-$rs = $user->insert_multi($rows);
-var_dump($rs);
-
-// 输出，成功插入的条数
-int(3) 
-```
-
-插入/更新：
-```
-// INSERT INTO tbl_user (id, name, age, note) VALUES (8, 'PhalApi', 1, 'framework') ON DUPLICATE KEY UPDATE age = 2
-$unique = array('id' => 8);
-$insert = array('id' => 8, 'name' => 'PhalApi', 'age' => 1, 'note' => 'framework');
-$update = array('age' => 2);
-$rs = $user->insert_update($unique, $insert, $update);
-var_dump($rs); 
-
-// 输出影响的行数
-```
-
-#### (4) CURD之更新操作（Update）
-
-操作|说明|示例|备注|是否PhalApi新增
----|---|---|---|---
-update()|更新数据|$user->where('id', 1)->update($data);|更新异常时返回false，数据无变化时返回0，成功更新返回1|否
-  
-表2-13 数据库更新操作  
-
-根据条件更新数据：  
-```
-// UPDATE tbl_user SET age = 2 WHERE (name = 'PhalApi');
-$data = array('age' => 2);
-$rs = $user->where('name', 'PhalApi')->update($data);
-var_dump($rs);
-
-// 输出
-int(1) //正常影响的行数
-int(0) //无更新，或者数据没变化
-boolean(false) //更新异常、失败
-```
-  
-更新数据，进行加1操作： 
-```
-// UPDATE tbl_user SET age = age + 1 WHERE (name = 'PhalApi')
-$rs = $user->where('name', 'PhalApi')->update(array('age' => new NotORM_Literal("age + 1")));
-var_dump($rs); 
-
-// 输出影响的行数
 ```
 
 #### (5) CURD之删除类（Delete）
