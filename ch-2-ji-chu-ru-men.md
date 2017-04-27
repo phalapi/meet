@@ -3133,7 +3133,20 @@ $rows = $this->getORM()->queryAll($sql, array());
 var_dump($rows);
 ```
 
-注意，此时的表需要使用全名，即自带前缀。这样也可以实现更自由的关联查询。   
+注意，此时的表需要使用全名，即自带前缀。这样也可以实现更自由的关联查询。另外，在使用原生态的SQL语句时，需要注意SQL注入攻击，应尽量使用参数绑定，而不应直接使用参数来拼接SQL语句。下面是不好的做法：  
+```
+// 存在SQL注入的写法
+$id = 1;
+$sql = "SELECT * FROM tbl_demo WHERE id = $id";
+$rows = $this->getORM()->queryAll($sql);
+```
+对于外部不可信的输入数据，应改用参数传递的方式。  
+```
+// 使用参数绑定方式
+$id = 1;
+$sql = "SELECT * FROM tbl_demo WHERE id = ?";
+$rows = $this->getORM()->queryAll($sql, array($id));
+```
 
 ### 2.5.5 分表分库策略
 
@@ -3410,6 +3423,42 @@ DI()->notormSlave = function() {
 最后使用此从库的服务```DI()->notormSlave```即可完成对从库的读取操作，用法同DI()->notorm，这里不再赘述。  
 
 #### (2) 其他数据库的链接
+
+PhalApi的数据库操作基于NotORM开源类库，而NotORM底层则是采用了PDO。根据PDO所支持的数据库可推导出目前PhalApi支持数据库的连接包括但不限于：MySQL，SQLite，PostgreSQL，MS SQL，Oracle。当需要连接非MySQL数据库时，可以通过扩展并定制的方式来扩展。  
+
+例如需要连接MS SQL数据库，首先，需要重载根据配置创建PDO实例的```PhalApi_DB_NotORM::createPDOBy($dbCfg)```方法，并在里面定制对应的数据库连接的PDO。  
+```
+// $ vim ./Shop/Common/DB/MSServer.php
+<?php
+class Common_DB_MSServer extends PhalApi_DB_NotORM {
+
+    protected function createPDOBy($dbCfg) {
+        $dsn = sprintf('odbc:Driver={SQL Server};Server=%s,%s;Database=%s;',
+            $dbCfg['host'],
+            $dbCfg['port'],
+            $dbCfg['name']
+        );
+
+        $pdo = new PDO(
+            $dsn,
+            $dbCfg['user'],
+            $dbCfg['password']
+        );
+
+        return $pdo;
+    }
+}
+```
+如果数据库连接配置与默认的格式不同，可自行调整./Config/dbs.php里的配置。  
+
+随后，在初始化文件Shop项目的入口文件./Public/shop/index.php中重新注册```DI()->notorm```。 
+```
+DI()->notorm = function() {
+    return new Common_DB_MSServer(DI()->config->get('dbs'), DI()->debug);
+};
+```
+
+使用定制了特定数据库PDO连接的类实例重新注册notorm服务后，便可以进行新的数据库连接了，并且原有的数据库操作不需要改动，便可实现数据库切换。 
 
 #### (3) 定制化你的Model基类
 
