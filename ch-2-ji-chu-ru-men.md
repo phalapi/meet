@@ -2750,7 +2750,7 @@ string(3) "Tom"
 string(4) "King"
 ```
 
-注意！以下是错误的用法，因为这里每次循环都会新建一个NotORM表实例，从而死循环。  
+注意！以下是错误的用法.还记得前面所学的NotORM状态的保持吗？因为这里每次循环都会新建一个NotORM表实例，所以没有保持前面的查询状态，从而死循环。    
 ```
 while ($row = DI()->notorm->user->select('id, name')->where('age > 18')->fetch('name')) {
      var_dump($row);
