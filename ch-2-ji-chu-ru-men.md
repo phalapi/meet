@@ -2699,13 +2699,13 @@ $user->group('note', 'age > 10')
 
 操作|说明|示例|备注|是否PhalApi新增
 ---|---|---|---|---
-insert()|插入数据|$user->insert($data);|原生态操作需要再调用insert_id()获取插入的ID|否
+insert()|插入数据|$user->insert($data);|全局方式需要再调用insert_id()获取插入的ID|否
 insert_multi()|批量插入|$user->insert_multi($rows);|可批量插入|否
 insert_update()|插入/更新|接口签名：insert_update(array $unique, array $insert, array $update = array()|不存时插入，存在时更新|否
 
 表2-11 数据库插入操作  
 
-插入单条纪录数据，注意，必须是同一个NotORM表实例，方能获取到新插入的行ID，且表必须设置了自增主键ID。    
+插入单条纪录数据，注意，必须是保持状态的同一个NotORM表实例，方能获取到新插入的行ID，且表必须设置了自增主键ID。    
 ```
 // INSERT INTO tbl_user (name, age, note) VALUES ('PhalApi', 1, 'framework')
 $data = array('name' => 'PhalApi', 'age' => 1, 'note' => 'framework');
@@ -2739,7 +2739,8 @@ int(3)
 
 插入/更新：
 ```
-// INSERT INTO tbl_user (id, name, age, note) VALUES (8, 'PhalApi', 1, 'framework') ON DUPLICATE KEY UPDATE age = 2
+// INSERT INTO tbl_user (id, name, age, note) VALUES (8, 'PhalApi', 1, 'framework') 
+// ON DUPLICATE KEY UPDATE age = 2
 $unique = array('id' => 8);
 $insert = array('id' => 8, 'name' => 'PhalApi', 'age' => 1, 'note' => 'framework');
 $update = array('age' => 2);
@@ -2765,11 +2766,28 @@ $rs = $user->where('name', 'PhalApi')->update($data);
 var_dump($rs);
 
 // 输出
-int(1) //正常影响的行数
-int(0) //无更新，或者数据没变化
-boolean(false) //更新异常、失败
+int(1)              //正常影响的行数
+int(0)              //无更新，或者数据没变化
+boolean(false)      //更新异常、失败
 ```
   
+在使用update()进行更新操作时，如果更新的数据和原来的一样，则会返回0（表示影响0行）。这时，会和更新失败（同样影响0行）混淆。但NotORM是一个优秀的类库，它已经提供了优秀的解决文案。我们在使用update()时，只须了解这两者返回结果的微妙区别即可。因为失败异常时，返回false；而相同数据更新会返回0。即：  
+ + 1、更新相同的数据时，返回0，严格来说是：int(0)
+ + 2、更新失败时，如更新一个不存在的字段，返回false，即：bool(false)
+  
+用代码表示，就是：  
+```
+$rs = DI()->notorm->user->where('id', $userId)->update($data);
+
+if ($rs >= 1) {
+    // 成功
+} else if ($rs === 0) {
+    // 相同数据，无更新
+} else if ($rs === false) {
+    // 更新失败
+}
+```
+
 更新数据，进行加1操作： 
 ```
 // UPDATE tbl_user SET age = age + 1 WHERE (name = 'PhalApi')
