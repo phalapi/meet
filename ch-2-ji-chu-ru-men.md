@@ -2349,22 +2349,30 @@ class Model_User extends PhalApi_Model_NotORM {
 
 使用NotORM时，值得注意的是，NotORM的实例是有内部状态的，即可以保持操作状态。故而在开发过程中，需要特别注意何时需要保留状态（使用同一个实例）、何时不需要保留状态（使用不同的实例）。 
 
-保留状态的写法： 
+需要保留状态时，需要使用同一个实例。例如： 
 ```
-$user = $notorm->user;  //获取一个新的实例
+// 获取一个新的实例
+$user = DI()->notorm->user;  
 $user->where('age > ?', 18);
 
-$user->where('name LIKE ?', '%dog%');  //相当于age > 18 AND name LIKE '%dog%'
+// 相当于age > 18 AND name LIKE '%dog%'
+$user->where('name LIKE ?', '%dog%');  
 ```
+可以看到，第二次查询后，会把前面的查询条件也累加上。  
 
-不保留状态的写法： 
+不保留状态时，需要每次使用新的实例。例如： 
 ```
-$user = $notorm->user;  //获取一个新的实例
+// 获取一个新的实例
+$user = DI()->notorm->user;  
 $user->where('age > ?', 18);
 
-$user = $notorm->user;  //重新获取新的实例
-$user->where('name LIKE ?', '%dog%');  //此时只有 name LIKE '%dog%'
+// 重新获取新的实例
+$user = DI()->notorm->user;  
+// 此时只有 name LIKE '%dog%'
+$user->where('name LIKE ?', '%dog%');  
 ```
+因为每次都是使用新的实例，所以不会出现条件叠加的情况。  
+
 关于这两者的使用场景，项目可根据情况选用，通常使用不保留状态的写法。  
 
 #### (2) Model基类中的表名配置
