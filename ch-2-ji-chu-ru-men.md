@@ -2284,7 +2284,7 @@ var_dump(DI()->config->has('foo'));
   
 需要注意的是，使用Yaconf扩展与默认的文件配置的区别的是，配置文件的目录路径以及配置文件的格式。当然也可以把Yaconf扩展的配置目录路径设置到PhalApi的配置目录./Config。  
 
-### 2.5.4 扩展你的项目
+### 2.4.4 扩展你的项目
 
 
 #### (1) 扩展其他配置读取方式
@@ -2507,10 +2507,96 @@ return array(
 ```  
 然后，便可根据具体的错误提示进行排查解决。   
 
+### 2.5.3 表数据入口模式与Model基类
 
-### 2.5.3 CURD基本操作
+ + **表数据入口模式**  
 
-为了方便大家理解数据库的操作，假设数据库中已经有以下数据库表和纪录。 
+我们一直在考虑，是否应该提供数据库的基本操作支持，以减少开发人员重复手工编写基本的数据操作。最后，我们认为是需要的。继而引发了新的问题：是以继承还是以委托来支持？  
+  
+委托有助于降低继承的层级，但却需要编写同类的操作以完成委托。所以，这里提供了基于NotORM的Model基类：PhalApi_Model_NotORM。但提供这个基类还是会遇到一些问题，例如：如何界定基本操作？如何处理分表存储？如何支持定制化？  
+  
+由于我们这里的Model使用了**“表数据入口”**模式，而不是“行数据入口”，也不是“活动纪录”，也不是复杂的“数据映射器”。所以在使用时可以考虑是否需要此基类。即使这样，你也可以很轻松转换到“行数据入口”和“活动纪录”模式。这里，PhalApi中的Model是更广义上的数据源层（后面会有更多说明），因此对应地PhalApi_Model_NotORM基类充当了数据库表访问入口的对象，处理表中所有的行。  
+  
+ + **规约层的CURD**  
+
+在明白了Model基类的背景后，再来了解其具体的操作和如何继承会更有意义。具体的操作与数据表的结构相关，在“约定编程”下：即每一个表都有一个主键（通常为id，也可以自由配置）以及一个序列化LOB字段ext_data。我们很容易想到Model接口的定义。为了突出接口签名，注释已移除，感兴趣的同学可查看源码。  
+```
+interface PhalApi_Model {
+    
+    public function get($id, $fields = '*');
+
+    public function insert($data, $id = NULL);
+
+    public function update($id, $data);
+
+    public function delete($id);
+}
+```
+上面的接口在规约层上提供了基于表主键的CURD基本操作，在具体实现时，需要注意两点：一是分表的处理；另一点则是LOB字段的序列化。  
+  
+ + **不使用Model基类的写法**
+
+由于我们使用了NotORM进行数据库的操作，所以这里也提供了基于NotORM的基类：PhalApi_Model_NotORM。下面以我们熟悉的获取用户的基本信息为例，说明此基类的使用。
+  
+下面是不使用Model基数的实现代码：  
+```
+<?php
+class Model_User {
+
+    public function getByUserId($userId) {
+        return DI()->notorm->user->select('*')->where('id = ?', $userId)->fetch();
+    }
+}
+```
+
+获取ID为1的用户信息，对应的调用为：  
+```
+$model = new Model_User();
+$rs = $model->getByUserId(1);
+```
+  
+ + **继承Model基类的写法**
+
+若继承于PhalApi_Model_NotORM，则Model子类的实现代码是：  
+```
+<?php
+class Model_User extends PhalApi_Model_NotORM {
+}
+```
+
+从上面的代码可以看出，基类已经提供了基于主键的CURD操作，并且默认根据规则自动使用user作为表名。相应地，当需要获取ID为1的用户信息时，外部调用则调整为：  
+```
+$model = new Model_User();
+$rs = $model->get(1);
+```
+
+再进一步，我们可以得到其他的基本操作：
+```
+$model = new Model_User();
+
+// 查询
+$row = $model->get(1);
+$row = $model->get(1, 'id, name'); //取指定的字段
+$row = $model->get(1, array('id', 'name')); //可以数组取指定要获取的字段
+
+// 更新
+$data = array('name' => 'test', 'update_time' => time());
+$model->update(1, $data); //基于主键的快速更新
+
+// 插入
+$data = array('name' => 'phalapi');
+$id = $model->insert($data);
+//$id = $model->insert($data, 5); //如果是分表，可以这样指定
+
+// 删除
+$model->delete(1);
+```
+
+通过对比，可以发现，使用继承于PhalApi_Model_NotORM基类的写法更简单，并且更统一，而且能更好地封装对数据库的操作。因此，我们通常推荐使用此实现方式。
+
+### 2.5.4 CURD基本操作
+
+虽然上面的Model子类很好地封装了数据库的操作，但所提供的操作只是基本的操作，更多数据库的操作将在这一节进行详细说明。为了方便大家理解数据库的操作，假设数据库中已经有以下数据库表和纪录。 
 
 ```
 CREATE TABLE `tbl_user` (
@@ -3038,94 +3124,8 @@ $user->where('id', 404)->delete();
 $user->delete();
 ```
 
-#### (6) 表数据入口模式与Model基类
 
- + **表数据入口模式**  
-
-我们一直在考虑，是否应该提供数据库的基本操作支持，以减少开发人员重复手工编写基本的数据操作。最后，我们认为是需要的。继而引发了新的问题：是以继承还是以委托来支持？  
-  
-委托有助于降低继承的层级，但却需要编写同类的操作以完成委托。所以，这里提供了基于NotORM的Model基类：PhalApi_Model_NotORM。但提供这个基类还是会遇到一些问题，例如：如何界定基本操作？如何处理分表存储？如何支持定制化？  
-  
-由于我们这里的Model使用了**“表数据入口”**模式，而不是“行数据入口”，也不是“活动纪录”，也不是复杂的“数据映射器”。所以在使用时可以考虑是否需要此基类。即使这样，你也可以很轻松转换到“行数据入口”和“活动纪录”模式。这里，PhalApi中的Model是更广义上的数据源层（后面会有更多说明），因此对应地PhalApi_Model_NotORM基类充当了数据库表访问入口的对象，处理表中所有的行。  
-  
- + **规约层的CURD**  
-
-在明白了Model基类的背景后，再来了解其具体的操作和如何继承会更有意义。具体的操作与数据表的结构相关，在“约定编程”下：即每一个表都有一个主键（通常为id，也可以自由配置）以及一个序列化LOB字段ext_data。我们很容易想到Model接口的定义。为了突出接口签名，注释已移除，感兴趣的同学可查看源码。  
-```
-interface PhalApi_Model {
-	
-	public function get($id, $fields = '*');
-
-	public function insert($data, $id = NULL);
-
-	public function update($id, $data);
-
-	public function delete($id);
-}
-```
-上面的接口在规约层上提供了基于表主键的CURD基本操作，在具体实现时，需要注意两点：一是分表的处理；另一点则是LOB字段的序列化。  
-  
- + **不使用Model基类的写法**
-
-由于我们使用了NotORM进行数据库的操作，所以这里也提供了基于NotORM的基类：PhalApi_Model_NotORM。下面以我们熟悉的获取用户的基本信息为例，说明此基类的使用。
-  
-下面是不使用Model基数的实现代码：  
-```
-<?php
-class Model_User {
-
-    public function getByUserId($userId) {
-        return DI()->notorm->user->select('*')->where('id = ?', $userId)->fetch();
-    }
-}
-```
-
-获取ID为1的用户信息，对应的调用为：  
-```
-$model = new Model_User();
-$rs = $model->getByUserId(1);
-```
-  
- + **继承Model基类的写法**
-
-若继承于PhalApi_Model_NotORM，则Model子类的实现代码是：  
-```
-<?php
-class Model_User extends PhalApi_Model_NotORM {
-}
-```
-
-从上面的代码可以看出，基类已经提供了基于主键的CURD操作，并且默认根据规则自动使用user作为表名。相应地，当需要获取ID为1的用户信息时，外部调用则调整为：  
-```
-$model = new Model_User();
-$rs = $model->get(1);
-```
-
-再进一步，我们可以得到其他的基本操作：
-```
-$model = new Model_User();
-
-// 查询
-$row = $model->get(1);
-$row = $model->get(1, 'id, name'); //取指定的字段
-$row = $model->get(1, array('id', 'name')); //可以数组取指定要获取的字段
-
-// 更新
-$data = array('name' => 'test', 'update_time' => time());
-$model->update(1, $data); //基于主键的快速更新
-
-// 插入
-$data = array('name' => 'phalapi');
-$id = $model->insert($data);
-//$id = $model->insert($data, 5); //如果是分表，可以这样指定
-
-// 删除
-$model->delete(1);
-```
-
-通过对比，可以发现，使用继承于PhalApi_Model_NotORM基类的写法更简单，并且更统一，而且能更好地封装对数据库的操作。因此，我们通常推荐使用此实现方式。
-
-### 2.5.4 事务操作、关联查询和其他操作
+### 2.5.5 事务操作、关联查询和其他操作
 
 #### (1) 事务操作
 
@@ -3226,7 +3226,7 @@ var_dump($rows);
 DI()->notorm->user->query('DROP TABLE tbl_user', array());
 ```
 
-### 2.5.5 分表分库策略
+### 2.5.6 分表分库策略
 
 为了应对海量用户的产品愿景需求，PhalApi设计了一个分布式的数据库存储方案，以便能满足数据量的骤增、云服务的横向扩展、接口服务开发的兼容性，以及数据迁移等问题，避免日后因为全部数据都存放在单台服务器而导致的限制。  
 
@@ -3485,7 +3485,7 @@ DB变更，这块是必不可少的，但一旦数据库表被拆分后，表数
  + 表之间的关联查询  
 表之间的关联查询，这个是分拆后的最大问题。虽然这样的代价是我们可以得到更庞大的存储设计， 而且很多表之间不需要必须的关联的查询，即使需要，也可以通过其他手段如缓存和分开查询来实现。这对开发人员有一定的约束，但是对于可预见性的海量数量，这又是必须的。
 
-### 2.5.6 扩展你的项目
+### 2.5.7 扩展你的项目
 #### (1) 主从数据库的配置
 
 默认只有一从数据库的配置，并支持分表分库配置。当需要数据库从库时，可以参考./Config/dbs.php配置，复件一份作为从库的配置，例如：  
