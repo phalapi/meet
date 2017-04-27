@@ -3105,21 +3105,21 @@ $rs = $model->get(1);
 ```
 $model = new Model_User();
 
-//查询
+// 查询
 $row = $model->get(1);
 $row = $model->get(1, 'id, name'); //取指定的字段
 $row = $model->get(1, array('id', 'name')); //可以数组取指定要获取的字段
 
-//更新
+// 更新
 $data = array('name' => 'test', 'update_time' => time());
 $model->update(1, $data); //基于主键的快速更新
 
-//插入
+// 插入
 $data = array('name' => 'phalapi');
 $id = $model->insert($data);
 //$id = $model->insert($data, 5); //如果是分表，可以这样指定
 
-//删除
+// 删除
 $model->delete(1);
 ```
 
@@ -3150,14 +3150,14 @@ DI()->notorm->transaction = 'COMMIT';
 
 也可以使用PhalApi封装的事务操作方式，并且推荐使用该方式。   
 ```
-    //Step 1: 开启事务
+    // Step 1: 开启事务
     DI()->notorm->beginTransaction('db_demo');
 
-    //Step 2: 数据库操作
+    // Step 2: 数据库操作
     DI()->notorm->user>insert(array('name' => 'test1'));
     DI()->notorm->user>insert(array('name' => 'test2'));
 
-    //Step 3: 提交事务/回滚
+    // Step 3: 提交事务/回滚
     DI()->notorm->commit('db_demo');
     //DI()->notorm->rollback('db_demo');
 ```
