@@ -2347,55 +2347,8 @@ class Model_User extends PhalApi_Model_NotORM {
 ```
 与全局获取方式不同的是，```$this->getORM()```获取的就已经是表实例，不需要再在后面添加表名。  
 
-#### (2) Model基类中的表名配置
 
-上面继承了PhalApi_Model_NotORM的Model_User类，对应默认的表名为：user。默认表名的自动匹配规则是：取“Model_”后面部分的字符全部转小写，并且在转化后会加上配置的表前缀。下面是更多Model子类及其自动映射的表名示例。  
-```
-// 对应userinfo表
-class Model_UserInfo extends PhalApi_Model_NotORM { }
-
-// 对应app_settings表
-class Model_App_Settings extends PhalApi_Model_NotORM { }
-
-// 对应tags表
-class Model_Tags extends PhalApi_Model_NotORM { }
-``` 
-
-但在以下场景或者其他需要手动指定表名的情况，可以重载```PhalApi_Model_NotORM::getTableName($id)```方法并手动指定表名。  
-
- + 自动匹配的表名与实际表名不符
- + 存在分表
- + Model类名不含有“Model_”
- + 数据库表使用蛇形命名法而类名使用大写字母分割的方式
- 
-如，当Model_User类对应的表名为：my_user表时，可这样重新指定表名： 
-```
-<?php
-class Model_User extends PhalApi_Model_NotORM {
-    protected function getTableName($id) {
-        return 'my_user'; 
-    }
-}
-```
-其中，$id参数用于进行分表的参考主键，只有当存在分表时才需要用到。通常传入的$id是整数，然后对分表的总数进行求余从而得出分表标识。例如有10张分表的user_session表：  
-```
-<?php
-class Model_User_UserSession extends PhalApi_Model_NotORM {
-    const TABLE_NUM = 10;
-
-    protected function getTableName($id) {
-        $tableName = 'user_session';
-        if ($id !== null) {
-            $tableName .= '_' . ($id % self::TABLE_NUM);
-        }
-        return $tableName;
-    }
-```
-即存在分表时，需要返回的格式为：表名称 + 下划线 + 分表标识。分表标识通常从0开始，为连续的自然数。  
-
-这里小结一下，对于使用Model子类的方式，可以使用默认自动匹配的表名。若表名不符合项目的需求，可以通过重载```PhalApi_Model_NotORM::getTableName($id)```方法手动指定。最后，若存在有分表，则需要结合$id参数，按一定的规则，拼接返回分表格式的表名。
-
-#### (3) NotORM实例状态
+#### (2) NotORM实例状态
 使用NotORM时，值得注意的是，NotORM的实例是有内部状态的，即可以保持操作状态。故而在开发过程中，需要特别注意何时需要保留状态（使用同一个实例），何时不需要保留状态（使用不同的实例）。 
 
 希望保留状态时，需要使用同一个实例。例如： 
@@ -2507,9 +2460,9 @@ return array(
 ```  
 然后，便可根据具体的错误提示进行排查解决。   
 
-### 2.5.3 表数据入口模式与Model基类
+### 2.5.3 Model基类的使用
 
- + **表数据入口模式**  
+#### (1) 表数据入口模式 
 
 我们一直在考虑，是否应该提供数据库的基本操作支持，以减少开发人员重复手工编写基本的数据操作。最后，我们认为是需要的。继而引发了新的问题：是以继承还是以委托来支持？  
   
@@ -2517,9 +2470,8 @@ return array(
   
 由于我们这里的Model使用了**“表数据入口”**模式，而不是“行数据入口”，也不是“活动纪录”，也不是复杂的“数据映射器”。所以在使用时可以考虑是否需要此基类。即使这样，你也可以很轻松转换到“行数据入口”和“活动纪录”模式。这里，PhalApi中的Model是更广义上的数据源层（后面会有更多说明），因此对应地PhalApi_Model_NotORM基类充当了数据库表访问入口的对象，处理表中所有的行。  
   
- + **规约层的CURD**  
 
-在明白了Model基类的背景后，再来了解其具体的操作和如何继承会更有意义。具体的操作与数据表的结构相关，在“约定编程”下：即每一个表都有一个主键（通常为id，也可以自由配置）以及一个序列化LOB字段ext_data。我们很容易想到Model接口的定义。为了突出接口签名，注释已移除，感兴趣的同学可查看源码。  
+在明白了Model基类的背景后，再来了解其具体的操作和如何继承会更有意义。具体的操作与数据表的结构相关，在约定编程下：即每一个表都有一个主键（通常为id，也可以自由配置）以及一个序列化LOB字段ext_data。我们很容易想到Model接口的定义。为了突出接口签名，注释已移除，感兴趣的同学可查看源码。  
 ```
 interface PhalApi_Model {
     
@@ -2533,10 +2485,12 @@ interface PhalApi_Model {
 }
 ```
 上面的接口在规约层上提供了基于表主键的CURD基本操作，在具体实现时，需要注意两点：一是分表的处理；另一点则是LOB字段的序列化。  
-  
- + **不使用Model基类的写法**
+ 
+#### (2) 推荐使用Model基类
 
-由于我们使用了NotORM进行数据库的操作，所以这里也提供了基于NotORM的基类：PhalApi_Model_NotORM。下面以我们熟悉的获取用户的基本信息为例，说明此基类的使用。
+由于我们使用了NotORM进行数据库的操作，所以这里也提供了基于NotORM的Model基类：PhalApi_Model_NotORM。下面以我们熟悉的获取用户的基本信息为例，说明此基类的使用。
+
+ + **不使用Model基类的写法**
   
 下面是不使用Model基数的实现代码：  
 ```
@@ -2593,6 +2547,54 @@ $model->delete(1);
 ```
 
 通过对比，可以发现，使用继承于PhalApi_Model_NotORM基类的写法更简单，并且更统一，而且能更好地封装对数据库的操作。因此，我们通常推荐使用此实现方式。
+
+#### (3) Model基类中的表名配置
+
+上面继承了PhalApi_Model_NotORM的Model_User类，对应默认的表名为：user。默认表名的自动匹配规则是：取“Model_”后面部分的字符全部转小写，并且在转化后会加上配置的表前缀。下面是更多Model子类及其自动映射的表名示例。  
+```
+// 对应userinfo表
+class Model_UserInfo extends PhalApi_Model_NotORM { }
+
+// 对应app_settings表
+class Model_App_Settings extends PhalApi_Model_NotORM { }
+
+// 对应tags表
+class Model_Tags extends PhalApi_Model_NotORM { }
+``` 
+
+但在以下场景或者其他需要手动指定表名的情况，可以重载```PhalApi_Model_NotORM::getTableName($id)```方法并手动指定表名。  
+
+ + 存在分表
+ + Model类名不含有“Model_”
+ + 自动匹配的表名与实际表名不符
+ + 数据库表使用蛇形命名法而类名使用大写字母分割的方式
+ 
+如，当Model_User类对应的表名为：my_user表时，可这样重新指定表名： 
+```
+<?php
+class Model_User extends PhalApi_Model_NotORM {
+    protected function getTableName($id) {
+        return 'my_user'; 
+    }
+}
+```
+其中，$id参数用于进行分表的参考主键，只有当存在分表时才需要用到。通常传入的$id是整数，然后对分表的总数进行求余从而得出分表标识。例如有10张分表的user_session表：  
+```
+<?php
+class Model_User_UserSession extends PhalApi_Model_NotORM {
+    const TABLE_NUM = 10;
+
+    protected function getTableName($id) {
+        $tableName = 'user_session';
+        if ($id !== null) {
+            $tableName .= '_' . ($id % self::TABLE_NUM);
+        }
+        return $tableName;
+    }
+```
+即存在分表时，需要返回的格式为：表名称 + 下划线 + 分表标识。分表标识通常从0开始，为连续的自然数。  
+
+这里小结一下，对于使用Model子类的方式，可以使用默认自动匹配的表名。若表名不符合项目的需求，可以通过重载```PhalApi_Model_NotORM::getTableName($id)```方法手动指定。最后，若存在有分表，则需要结合$id参数，按一定的规则，拼接返回分表格式的表名。
 
 ### 2.5.4 CURD基本操作
 
@@ -2779,7 +2781,7 @@ $user->group('note')
 $user->group('note', 'age > 10')
 ```
 
-#### (2) CURD之插入操作（Create）
+#### (2) CURD之插入操作
 
 插入操作可分为插入单条纪录、多条纪录，或根据条件插入。  
 
@@ -2836,7 +2838,7 @@ var_dump($rs);
 // 输出影响的行数
 ```
 
-#### (3) CURD之更新操作（Update）
+#### (3) CURD之更新操作
 
 操作|说明|示例|备注|是否PhalApi新增
 ---|---|---|---|---
@@ -2883,7 +2885,7 @@ var_dump($rs);
 // 输出影响的行数
 ```
 
-#### (4) CURD之查询操作（Retrieve）
+#### (4) CURD之查询操作
 
 查询操作主要有获取一条纪录、获取多条纪录以及聚合查询等。  
 
@@ -3103,7 +3105,7 @@ var_dump($user->sum('age'));
 string(3) "139"
 ```
 
-#### (5) CURD之删除类（Delete）
+#### (5) CURD之删除类
 
 操作|说明|示例|备注|是否PhalApi新增
 ---|---|---|---|---
