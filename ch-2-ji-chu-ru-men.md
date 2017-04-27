@@ -2735,6 +2735,7 @@ array(2) {
   ["name"]=>
   string(4) "King"
 }
+... ...
 ```
 
 循环获取每一行，并且只获取单个字段。需要注意的是，指定获取的字段，必须出现在select里，并且返回的不是数组，而是字符串。  
@@ -2748,15 +2749,16 @@ while ($row = $user->fetch('name')) {
 // 输出
 string(3) "Tom"
 string(4) "King"
+... ...
 ```
 
-注意！以下是错误的用法.还记得前面所学的NotORM状态的保持吗？因为这里每次循环都会新建一个NotORM表实例，所以没有保持前面的查询状态，从而死循环。    
+注意！以下是错误的用法。还记得前面所学的NotORM状态的保持吗？因为这里每次循环都会新建一个NotORM表实例，所以没有保持前面的查询状态，从而死循环。    
 ```
 while ($row = DI()->notorm->user->select('id, name')->where('age > 18')->fetch('name')) {
      var_dump($row);
 }
 ```
-
+  
 只获取第一行，并且获取多个字段，等同于fetchRow()操作。  
 ```
 // SELECT id, name FROM tbl_user WHERE (age > 18) LIMIT 1;
@@ -2851,9 +2853,29 @@ array(1) {
 // 除了使用上面的关联数组传递参数，也可以使用索引数组传递参数
 $sql = 'SELECT name FROM tbl_user WHERE age > ? LIMIT 1';
 $params = array(18);
-$rs = $user->queryRows($sql, $params); //使用queryRows()别名
+// 也使用queryRows()别名
+$rs = $user->queryRows($sql, $params); 
 ```
-请注意：使用上面这种方式进行查询，需要手动填写完整的表名字，并且需要通过某个表的实例来运行。  
+在使用queryAll()queryRows()进行原生SQL操作时，需要特别注意： 
+
+ + 1、需要手动填写完整的表名字，包括分表标识，并且需要通过任意表实例来运行
+ + 2、尽量使用参数绑定，而不应直接使用参数来拼接SQL语句，慎防SQL注入攻击  
+
+
+下面是不好的写法，很有可能会导致SQL注入攻击  
+```
+// 存在SQL注入的写法
+$id = 1;
+$sql = "SELECT * FROM tbl_demo WHERE id = $id";
+$rows = $this->getORM()->queryAll($sql);
+```
+对于外部不可信的输入数据，应改用参数传递的方式。  
+```
+// 使用参数绑定方式
+$id = 1;
+$sql = "SELECT * FROM tbl_demo WHERE id = ?";
+$rows = $this->getORM()->queryAll($sql, array($id));
+```
 
 查询总数：  
 ```
@@ -3176,20 +3198,6 @@ $rows = $this->getORM()->queryAll($sql, array());
 var_dump($rows);
 ```
 
-注意，此时的表需要使用全名，即自带前缀。这样也可以实现更自由的关联查询。另外，在使用原生态的SQL语句时，需要注意SQL注入攻击，应尽量使用参数绑定，而不应直接使用参数来拼接SQL语句。下面是不好的做法：  
-```
-// 存在SQL注入的写法
-$id = 1;
-$sql = "SELECT * FROM tbl_demo WHERE id = $id";
-$rows = $this->getORM()->queryAll($sql);
-```
-对于外部不可信的输入数据，应改用参数传递的方式。  
-```
-// 使用参数绑定方式
-$id = 1;
-$sql = "SELECT * FROM tbl_demo WHERE id = ?";
-$rows = $this->getORM()->queryAll($sql, array($id));
-```
 
 ### 2.5.5 分表分库策略
 
