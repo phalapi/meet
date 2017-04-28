@@ -3632,7 +3632,7 @@ DI()->cache = new PhalApi_Cache_File(array('path' => API_ROOT . '/Runtime', 'pre
 初始化文件缓存时，需要传入配置数组，其中path为缓存数据的目录，可选的前缀prefix，用于区别不同的项目。  
 
 然后便可在适当的场景使用缓存。  
-````
+```
 // 设置
 DI()->cache->set('thisYear', 2015, 600);
 
