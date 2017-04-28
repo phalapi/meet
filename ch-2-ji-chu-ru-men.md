@@ -3709,6 +3709,31 @@ $config = array(
   
 请注意，通常不建议在权重weight使用稀疏配置，即要么全部不配置权重，要么全部配置权重，以免部分使用默认权重为0的MC实例不生效。  
 
+#### (2) Redis缓存
+当需要使用Redis缓存时，需要先安装对应的Redis扩展。  
+
+简单的Redis缓存的初始化如下：  
+```
+$config = array('host' => '127.0.0.1', 'port' => 6379);
+DI()->cache = new PhalApi_Cache_Redis($config);
+```
+
+关于Redis的配置，更多选项如下。  
+
+Redis配置项|是否必须|默认值|说明
+---|---|---|---
+type|否|unix|当为unix时使用socket连接，否则使用http连接
+socket|type为unix时必须|无|unix连接方式
+host|type不为unix时必须|无|Redis域名
+port|type不为unix时必须|6379|Redis端口
+timeout|否|300|连接超时时间，单位秒
+prefix|否|phalapi:|key前缀
+auth|否|空|Redis身份验证
+db|否|0|Redis库
+
+表2-18 Redis连接配置项  
+
+
 ### 2.6.3 多级缓存策略
 很多时候，需要结合使用简单的本地缓存和高速集群缓存，以便应对承载更大的访问量和并发量，从而提供更好的用户体验和服务器吞吐率，这种组合的方式叫为多级缓存策略。  
   
