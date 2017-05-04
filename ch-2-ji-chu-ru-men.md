@@ -725,7 +725,7 @@ version=1.2.3
 #### (1) 如何定制接口服务的传递方式？
 虽然我们约定统一使用```?service=Class.Action```的格式来传递接口服务名称，但如果项目有需要，也可以采用其他方式来传递。例如使用斜杠而非点号进行分割：```?service=Class/Action```，再进一步，使用r参数，即最终接口服务的参数格式为：```?r=Class/Action```。  
 
-如果需要采用其他传递接口服务名称的方式，则可以重载```PhalApi_Request::getService()```方法。以下是针对改用斜杠分割、并换用r参数名字的实现示例：  
+如果需要采用其他传递接口服务名称的方式，则可以重写```PhalApi_Request::getService()```方法。以下是针对改用斜杠分割、并换用r参数名字的实现示例：  
 ```
 // $ vim ./Shop/Common/Request/Ch1.php
 <?php
@@ -765,7 +765,7 @@ DI()->request = new Common_Request_Ch1();
 
 这里有几个注意事项： 
 
- + 1、重载后的方法需要转换为原始的接口服务格式，即：Class.Action  
+ + 1、重写后的方法需要转换为原始的接口服务格式，即：Class.Action  
  + 2、为保持兼容性，子类需兼容父类的实现。即在取不到自定义的接口服务名称参数时，应该返回原来的接口服务。  
 
 除了在框架编写代码实现其他接口服务的传递方式外，还可以通过Web服务器的规则Rewirte来实现。假设使用的是Nginx服务器，那么可以添加以下Rewrite配置。  
@@ -810,7 +810,7 @@ DI()->request = new PhalApi_Request($data);
 这样，就可以很方便模拟构造一个接口服务请求的上下文环境，便于模拟进行请求。  
 
 
-另一种方式是稍微复杂一点的，是为了应对更复杂的业务场景，例如出于安全性考虑需要对客户端的数据包进行解密。这时需要重载并实现```PhalApi_Request::genData($data)```方法。其中参数```$data```即上面的构造函数参数，未指定时为NULL。    
+另一种方式是稍微复杂一点的，是为了应对更复杂的业务场景，例如出于安全性考虑需要对客户端的数据包进行解密。这时需要重写并实现```PhalApi_Request::genData($data)```方法。其中参数```$data```即上面的构造函数参数，未指定时为NULL。    
 
 假设，我们现在需要把全部的参数base64编码序列化后通过$_POST['data']来传递，则相应的解析代码如下。首先，先定义自己的扩展请求类，在里面完成对称解析的动作：  
 ```
@@ -850,7 +850,7 @@ $this->cookie   | $_COOKIE
 
 表2-7 备用数据源与PhalApi_Request类成员属性的映射关系  
   
-当需要对这些备用数据源进行定制时，可以重载并实现PhalApi_Request类的构造函数，在完成对父类的初始化后，再补充具体的初始化过程。如对于需要使用post_raw数据作为POST数据的情况，可以：  
+当需要对这些备用数据源进行定制时，可以重写并实现PhalApi_Request类的构造函数，在完成对父类的初始化后，再补充具体的初始化过程。如对于需要使用post_raw数据作为POST数据的情况，可以：  
 ```
 <?php
 class My_Request_PostRaw extends PhalApi_Request{
@@ -880,7 +880,7 @@ public function getRules() {
 
 其他数据源是除了上面的主数据源和备用数据源以外的数据源。当需要使用其他途径的数据源时，可进行扩展支持。  
 
-若需要扩展项目自定义的映射关系，则可以重载```PhalApi_Request::getDataBySource($source)```方法，如：  
+若需要扩展项目自定义的映射关系，则可以重写```PhalApi_Request::getDataBySource($source)```方法，如：  
 ```
 // $ vim ./Shop/Common/Request/Stream.php
 <?php
@@ -1363,9 +1363,9 @@ DI()->response->setDebug('y', $y);
 
 ### 2.2.5 扩展你的项目
 #### (1) 调整响应结构
-默认返回的是ret字段、data字段和msg字段。如果需要使用其他字段名称，可以重载```PhalApi_Response::getResult()```，然后重新注册即可。请在父类返回的基础上再作调整，以保持对调试模式和后续新增基础功能的支持。 
+默认返回的是ret字段、data字段和msg字段。如果需要使用其他字段名称，可以重写```PhalApi_Response::getResult()```，然后重新注册即可。请在父类返回的基础上再作调整，以保持对调试模式和后续新增基础功能的支持。 
 
-重载并实现后，需要重新注册```DI()->response```服务，这里不再赘述。  
+重写并实现后，需要重新注册```DI()->response```服务，这里不再赘述。  
 
 #### (2) 使用其他返回格式
 除了使用JSON格式返回外，还可以使用其他格式返回结果。  
@@ -2562,7 +2562,7 @@ class Model_App_Settings extends PhalApi_Model_NotORM { }
 class Model_Tags extends PhalApi_Model_NotORM { }
 ``` 
 
-但在以下场景或者其他需要手动指定表名的情况，可以重载```PhalApi_Model_NotORM::getTableName($id)```方法并手动指定表名。  
+但在以下场景或者其他需要手动指定表名的情况，可以重写```PhalApi_Model_NotORM::getTableName($id)```方法并手动指定表名。  
 
  + 存在分表
  + Model类名不含有“Model_”
@@ -2594,7 +2594,7 @@ class Model_User_UserSession extends PhalApi_Model_NotORM {
 ```
 即存在分表时，需要返回的格式为：表名称 + 下划线 + 分表标识。分表标识通常从0开始，为连续的自然数。  
 
-这里小结一下，对于使用Model子类的方式，可以使用默认自动匹配的表名。若表名不符合项目的需求，可以通过重载```PhalApi_Model_NotORM::getTableName($id)```方法手动指定。最后，若存在有分表，则需要结合$id参数，按一定的规则，拼接返回分表格式的表名。
+这里小结一下，对于使用Model子类的方式，可以使用默认自动匹配的表名。若表名不符合项目的需求，可以通过重写```PhalApi_Model_NotORM::getTableName($id)```方法手动指定。最后，若存在有分表，则需要结合$id参数，按一定的规则，拼接返回分表格式的表名。
 
 ### 2.5.4 CURD基本操作
 
@@ -3333,7 +3333,7 @@ CREATE TABLE `tpl_demo_2`  ... ...;
 DI()->notorm->demo->where('id', '1')->fetch();
 ```
 
-假设分别的规则是根据ID对3进行求余。当需要使用分表时，在使用Model基类的情况下，可以通过重载```PhalApi_Model_NotORM::getTableName($id)```实现相应的分表规则。  
+假设分别的规则是根据ID对3进行求余。当需要使用分表时，在使用Model基类的情况下，可以通过重写```PhalApi_Model_NotORM::getTableName($id)```实现相应的分表规则。  
 ```
 // $ vim ./Shop/Model/demo.php
 <?php
@@ -3493,7 +3493,7 @@ DB变更，这块是必不可少的，但一旦数据库表被拆分后，表数
 
 PhalApi的数据库操作基于NotORM开源类库，而NotORM底层则是采用了PDO。根据PDO所支持的数据库可推导出目前PhalApi支持数据库的连接包括但不限于：MySQL，SQLite，PostgreSQL，MS SQL，Oracle。当需要连接非MySQL数据库时，可以通过扩展并定制的方式来扩展。  
 
-例如需要连接MS SQL数据库，首先，需要重载根据配置创建PDO实例的```PhalApi_DB_NotORM::createPDOBy($dbCfg)```方法，并在里面定制对应的数据库连接的PDO。  
+例如需要连接MS SQL数据库，首先，需要重写根据配置创建PDO实例的```PhalApi_DB_NotORM::createPDOBy($dbCfg)```方法，并在里面定制对应的数据库连接的PDO。  
 ```
 // $ vim ./Shop/Common/DB/MSServer.php
 <?php
@@ -3547,7 +3547,7 @@ DI()->notormSlave = function() {
   
  + **LOB序列化**  
 
-先是LOB序列化，考虑到有分表的存在，当发生数据库变更时会有一定的难度和风险，尤其是在线上生产环境。因此引入了扩展字段ext_data。当然，此字段在应对数据库变更的同时，也可以作为简单明了的值对象的大对象。序列化LOB首先要考虑的问题是使用二进制（BLOB）还是文本（CLOB），出于通用性、易读性和测试性，我们目前使用了json格式的文本序列化。例如考虑到空间或性能问题，可以重载格式化方法```PhalApi_Model_NotORM::formatExtData()```和解析方法```PhalApi_Model_NotORM::parseExtData()```。  
+先是LOB序列化，考虑到有分表的存在，当发生数据库变更时会有一定的难度和风险，尤其是在线上生产环境。因此引入了扩展字段ext_data。当然，此字段在应对数据库变更的同时，也可以作为简单明了的值对象的大对象。序列化LOB首先要考虑的问题是使用二进制（BLOB）还是文本（CLOB），出于通用性、易读性和测试性，我们目前使用了json格式的文本序列化。例如考虑到空间或性能问题，可以重写格式化方法```PhalApi_Model_NotORM::formatExtData()```和解析方法```PhalApi_Model_NotORM::parseExtData()```。  
   
 比如改成serialize序列化：  
 ```
@@ -3599,7 +3599,7 @@ $model->update(1, $data);
 
 在存在分表过多的情况下，框架会根据配置自动匹配不同表的不同主键配置。因为Model基类中的CURD基本操作是基于主键进行的，所以这里的问题就演变成了如何快速找到表的主键名。  
 
-当然，这里是可以继续使用框架默认的自动匹配算法。若表主键是固定且统一的，为了提升性能，可重载```PhalApi_Model_NotORM::getTableKey($table)```方法来指定主键名。  
+当然，这里是可以继续使用框架默认的自动匹配算法。若表主键是固定且统一的，为了提升性能，可重写```PhalApi_Model_NotORM::getTableKey($table)```方法来指定主键名。  
   
 例如，全部表的主键都固定为id时：  
 ```
@@ -3794,9 +3794,202 @@ PhalApi_Cache缓存接口，主要有三个操作：设置缓存、获取缓存�
 
 所以，新的缓存实现类应按规约层的接口签名完成此缓存接口的实现。  
 
-## 2.7 日记
+## 2.7 日志
+
+关于日志接口，PSR规范中给出了相当好的说明和定义，并且有多种细分的日记级别。  
+
+![](iamges/ch-2-logger-interface.png)  
+图2-10 摘自PSR中的Logger Interface  
+
+### 2.7.1 简化版的日记接口
+
+虽然PSR规范中详尽定义了日志接口，然而在用使用开源框架或内部框架进行项目开发过程中，实际上日记的分类并没有使用得那么丰富，通常只是频繁集中在某几类。为了减少不必要的复杂性，PhalApi特地将此规范的日志接口精简为三种，只有：  
+
+ + **error**： 系统异常类日记
+ + **info**： 业务纪录类日记
+ + **debug**： 开发调试类日记
+
+#### (1) error 系统异常类日记
+
+系统异常类日志用于纪录**在后端不应该发生却发生的事情**，即通常所说的系统异常。例如：调用第三方、的接口失败了，此时需要纪录一下当时的场景，以便复查和定位出错的原因。又如：写入一条纪录到数据纪录却失败了，此时需要纪录一下，以便进一步排查。  
+  
+纪录系统异常日志，用法很简单。可以使用```PhalApi_Logger::error($msg, $data)```接口，第一个参数$msg用于描述日志信息，第二个可选参数为上下文场景的信息。下面是一些使用示例。     
+```
+// 只有描述
+DI()->logger->error('fail to insert DB');
+
+// 描述 + 简单的信息
+DI()->logger->error('fail to insert DB', 'try to register user dogstar');
+
+// 描述 + 当时的上下文数据
+$data = array('name' => 'dogstar', 'password' => '123456');
+DI()->logger->error('fail to insert DB', $data);
+```
+
+上面三条纪录，会在日记文件中生成类似以下的日志内容。  
+```
+$ tailf ./Runtime/log/201502/20150207.log 
+2015-02-07 20:37:55|ERROR|fail to insert DB
+2015-02-07 20:37:55|ERROR|fail to insert DB|try to register user dogstar
+2015-02-07 20:37:55|ERROR|fail to insert DB|{"name":"dogstar","password":"123456"}
+```
+
+#### (2) info 业务纪录类日记
+
+业务纪录日志，是指纪录业务上关键流程环节的操作，以便发生系统问题后进行回滚处理、问题排查以及数据统计。如在有缓存的情况下，可能数据没及时写入数据库而导致数据丢失或者回档，这里可以通过日记简单查看是否可以恢复。以及说明一下操作发生的背景或原由，如通常游戏中用户的经验值添加：  
+```
+// 假设：10 + 2 = 12
+DI()->logger->info('add user exp', array('name' => 'dogstar', 'before' => 10, 'addExp' => 2, 'after' => 12, 'reason' => 'help one more phper'));
+
+// 对应的LOG
+2015-02-07 20:48:51|INFO|add user exp|{"name":"dogstar","before":10,"addExp":2,"after":12,"reason":"help one more phper"}
+```  
+
+但当哪天我们看到以下的LOG是就会发现系统存在隐藏的BUG：  
+```
+// 居然：10 + 2 = 11 ？！
+2015-02-07 20:48:51|INFO|add user exp|{"name":"dogstar","before":10,"addExp":2,"after":11,"reason":"help one more phper"}
+```
+
+而当用户玩家来投诉客服时，客服人员又来找到后端开发人员时，我们可以证明得了确实是系统原因造成了用户丢失1点经验值。  
+
+特别地，若我们看到以下的LOG时，不难看出有人在用非法的渠道刷取经验：  
+```
+2015-02-07 20:52:35|INFO|add user exp|{"name":"dogstar","before":10,"addExp":2,"after":12,"reason":"help one more phper"}
+2015-02-07 20:52:35|INFO|add user exp|{"name":"dogstar","before":12,"addExp":2,"after":14,"reason":"help one more phper"}
+
+....
+
+2015-02-07 20:52:35|INFO|add user exp|{"name":"dogstar","before":998,"addExp":2,"after":1000,"reason":"help one more phper"}
+```
+所幸有日记并及时发现了，随后如何处理就视具体的项目而定。但当产品来追问时，我们可以及时给出反馈和做出处理。  
+  
+还有更为重要的是**数据统计**。这块就App数据分析和统计这块已经有了很好的第三方服务支持。但仍然可以轻松实现自己的数据统计，以便二次确认和定制化。毕竟，总是依赖第三方不是那么轻便，而且存在敏感数据安全问题。  
+
+假设提供一个简单的上报接口，如：  
+```
+// $ vim ./Shop/Api/Statistics.php
+<?php
+class Api_Statistics extends PhalApi_Api {
+
+    public function getRules() {
+        return array(
+            'report' => array(
+                'username' => array('name' => 'username', 'require' => true),
+                'msg' => array('name' => 'msg', 'require' => true),
+            ),
+        );
+    }
+
+    public function report() {
+        DI()->logger->info($this->username, $this->msg);
+    }
+}
+```
+然后，客户端App在需要的场景进行埋点纪录，如用户打开应用时，请求上报服务：  
+```
+http://api.phalapi.net/shop/?service=Statistics.Report&username=dogstar&msg=enter%20app
+```
+
+即可看到：
+```
+2015-02-07 21:01:13|INFO|dogstar|enter app
+```
+
+到后期，若我们需要统计用户的登录情况时，便可以这样进行数据统计每天各个用户登录的次数，从而得出用户活跃程度。  
+```
+$ cat ./Runtime/log/201502/20150207.log | grep "enter app" | awk -F '|' '{print $3}' | sort | uniq -c
+     11 dogstar
+      5 King
+      2 Tom
+```
+
+#### (3) debug 开发调试类日记
+
+开发调试类日记，主要用于开发过程中的调试。用法如上，这里不再赘述。以下是一些简单的示例。  
+```
+// 只有描述
+DI()->logger->debug('just for test');
+
+// 描述 + 简单的信息
+DI()->logger->debug('just for test', '一些其他的描述 ...');
+
+// 描述 + 当时的上下文数据
+DI()->logger->debug('just for test', array('name' => 'dogstar', 'password' => '******'));
+```
+
+#### (4) 更灵活的分类  
+
+若上面的error、info、debug都不能满足项目的需求时，可以使用```PhalApi_Logger::log()```接口进行更灵活的日记纪录。  
+```
+DI()->logger->log('demo', 'add user exp', array('name' => 'dogstar', 'after' => 12));
+DI()->logger->log('test', 'add user exp', array('name' => 'dogstar', 'after' => 12));
+
+// 对应的日记
+2015-02-07 21:13:27|DEMO|add user exp|{"name":"dogstar","before":10,"addExp":2,"after":12,"reason":"help one more phper"}
+2015-02-07 21:15:39|TEST|add user exp|{"name":"dogstar","after":12}
+
+```
+  
+注意到，```PhalApi_Logger::log()```接口第一个参数为日记分类的名称，在写入日记时会自动转换为大写。其接口函数签名为：  
+```
+    /**
+     * 日记纪录
+     *
+     * 可根据不同需要，将日记写入不同的媒介
+     *
+     * @param string $type 日记类型，如：info/debug/error, etc
+     * @param string $msg 日记关键描述
+     * @param string/array $data 场景上下文信息
+     * @return NULL
+     */
+    abstract public function log($type, $msg, $data);
+```
+
+#### (5) 指定日志级别
+
+在使用日志纪录前，在注册日志```DI()->logger```服务时须指定开启的日志级别，以便允许指定级别的日志得以纪录，从而达到选择性保存所需要的日志的目的。  
+
+通过PhalApi_Logger的构造函数的参数，可以指定日志级别。多个日记级别使用或运算进行组合。  
+```
+DI()->logger = new PhalApi_Logger_File(API_ROOT . '/Runtime',
+    PhalApi_Logger::LOG_LEVEL_DEBUG | PhalApi_Logger::LOG_LEVEL_INFO | PhalApi_Logger::LOG_LEVEL_ERROR);
+```
+
+
+上面的三类日记分别对应的标识如下。  
+
+日志类型|日志级别标识
+---|---
+error 系统异常类|PhalApi_Logger::LOG_LEVEL_ERROR
+info 业务纪录类|PhalApi_Logger::LOG_LEVEL_INFO
+debug 开发调试类|PhalApi_Logger::LOG_LEVEL_DEBUG
+  
+表2-18 日志级别标识  
+
+### 2.7.2 扩展你的项目
+
+普遍情况下，我们认为将日记存放在文件是比较合理的，因为便于查看、管理和统计。当然，如果你的项目需要将日记纪录保存在其他存储媒介中，也可以快速扩展实现的。例如实现数据库的存储思路。   
+```
+//$ vim ./Shop/Common/Logger/DB.php
+<?php
+class Common_Logger_DB extends PhalApi_Logger {
+    
+    public function log($type, $msg, $data) {
+        // TODO 数据库的日记写入 ...
+    } 
+}
+```
+
+随后，重新注册```DI()->logger```服务即可。  
+```
+DI()->logger = new Common_Logger_DB(
+    PhalApi_Logger::LOG_LEVEL_DEBUG | PhalApi_Logger::LOG_LEVEL_INFO | PhalApi_Logger::LOG_LEVEL_ERROR);
+```
 
 ## 2.8 COOKIE
 
 
 ## 2.9 国际化
+
+## 本章小结
