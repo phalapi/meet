@@ -495,6 +495,7 @@ _formatterString|否|否|[PhalApi_Request_Formatter_String](http://www.phalapi.n
 当需要判断一个DI资源服务是否已被注册，出于常识会这样判断：  
 ```
 if (isset(DI()->cache)) {
+    // 永远无法进入这里
 }
 ```
 但这样的判断永远为FALSE，不管注册与否。追其原因在于，DI类使用了魔法方法的方式来提供类成员属性，并存放于```PhalApi_DI::$data```中。这就导致了如果直接使用```isset(DI()->cache)```的话，不会触发魔法方法```PhalApi_DI::__get($name)```的调用，因为确实没有```PhalApi_DI::$cache```这样的成员属性，最终判断都为FALSE。  
