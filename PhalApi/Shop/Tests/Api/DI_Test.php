@@ -3,8 +3,8 @@
 require_once dirname(__FILE__) . '/../test_env.php';
 
 class Simple {
-        public function __construct() {
-                }
+    public function __construct() {
+    }
 }
 
 class DI_Test extends PHPUnit_Framework_TestCase {
@@ -19,7 +19,7 @@ class DI_Test extends PHPUnit_Framework_TestCase {
 
         // 使用匿名函数延迟加载
         DI()->set('aClosure', function(){
-                return new Simple();
+            return new Simple();
         });
 
         // 获取
@@ -35,7 +35,7 @@ class DI_Test extends PHPUnit_Framework_TestCase {
 
         // 使用匿名函数延迟加载
         DI()->setAClosure(function(){
-                return new Simple();
+            return new Simple();
         });
 
         // 获取
@@ -51,7 +51,7 @@ class DI_Test extends PHPUnit_Framework_TestCase {
 
         // 使用匿名函数延迟加载
         DI()->aClosure = function(){
-                return new Simple();
+            return new Simple();
         };
 
         // 获取
@@ -69,7 +69,7 @@ class DI_Test extends PHPUnit_Framework_TestCase {
 
         // 使用匿名函数延迟加载
         $di['aClosure'] = function(){
-                return new Simple();
+            return new Simple();
         };
 
         // 获取
