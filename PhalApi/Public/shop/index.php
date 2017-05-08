@@ -15,6 +15,7 @@ DI()->_formatterEmail = 'Common_Request_Email';
 // 微信签名验证服务
 //DI()->filter = 'Common_Request_WeiXinFilter';
 
+// XML返回
 //DI()->response = 'Common_Response_XML';
 
 $config = array('domain' => '.phalapi.net');

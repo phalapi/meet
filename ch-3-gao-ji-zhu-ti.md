@@ -181,11 +181,11 @@ var_dump($di['aClosure']);
 
  + **开发实现**  
 
-开发实现的主要是指实现组件、公共服务或者基础设施的功能，此部分通常由者有经验的开发工程师来完成。  
+开发实现主要是指实现组件、公共服务或者基础设施的功能，此部分通常由者有经验的开发工程师来完成。  
 
 例如对项目的接口签名的验证拦截、一个完成了对七牛云存储接口调用的扩展、又或者是项目内部加密的方案等，这些以包或者接口提供，为外部使用提供配套的配置说明、使用示例和文档说明。更为重要的是，应该提供完善、具备自我验证能力、高代码覆盖率的单元测试，以保证实现功能的稳定性。此类实现应该是稳定的，即没有明显或者隐藏的BUG。即使有，原作者也可以快速进行定位和解决，包括后期的扩展和升级也是。  
 
-如果实现的PhalApi框架中的功能，则应该实现对应的接口，如：加解密接口、日志接口、缓存接口等。这样的示例，在前面讲解基础内容时已遇到了很多。这里再来稍微回顾一下其中的数据库日志示例。   
+如果实现的是PhalApi框架中的功能，则应该实现对应的接口，如：加解密接口、日志接口、缓存接口等。这样的示例，在前面讲解基础内容时已遇到了很多。这里再来稍微回顾一下其中的数据库日志示例。   
 ```
 <?php
 class Common_Logger_DB extends PhalApi_Logger {
@@ -461,6 +461,8 @@ $_GLOBALS['debug'] = true;
 
 需要注册的DI资源有很多，为了大家统一共识，避免混乱，特将目前已有的DI资源整理如下。  
 
+表3-1 DI资源速查表  
+
 资源名称|是否启动时自动注册|是否必须|接口/类|作用说明
 ---|---|---|---|---
 loader|否|是|[PhalApi_Loader](http://www.phalapi.net/docs/classes/PhalApi_Loader.html)|自动加载：负责PEAR风格下类的自动加载，需要手动注册，指定项目路径
@@ -486,7 +488,6 @@ _formatterFloat|否|否|[PhalApi_Request_Formatter_Float](http://www.phalapi.net
 _formatterInt|否|否|[PhalApi_Request_Formatter_Int](http://www.phalapi.net/docs/classes/PhalApi_Request_Formatter_Int.html)|整数格式化服务（系统内部使用）
 _formatterString|否|否|[PhalApi_Request_Formatter_String](http://www.phalapi.net/docs/classes/PhalApi_Request_Formatter_String.html)|字符串格式化服务（系统内部使用）
 
-表3-1 DI资源速查表  
 
 上面以下划线开头的资源名称，表示这些资源会由PhalApi框架自动使用，不需要开发人员手动调用。  
 
@@ -542,13 +543,13 @@ PEAR包的类文件路径和类名映射非常简单，如下图：
 
 下面是一些错误的示例。  
 
+表3-2 错误的类命名  
+
 类名|类文件|错误原因
 ---|---|---
 Api_user|./Api/User.php|类名user小写，导致无法加载
 Api_User|./Api/user.php|文件名user小写，导致无法加载
 Api_User|./Api_User.php|类文件位置错误，导致无法加载
-
-表3-2 错误的类命名  
 
 ### 3.2.2 挂靠式自动加载
 
@@ -670,6 +671,8 @@ DI()->response = new Common_Response_XML();
 
 初始化文件中的注册：  
 ```
+$loader = new PhalApi_Loader(API_ROOT, 'Library');
+
 // 配置
 DI()->config = new PhalApi_Config_File(API_ROOT . '/Config');
 
@@ -679,6 +682,9 @@ DI()->notorm = new PhalApi_DB_NotORM(DI()->config->get('dbs'), DI()->debug);
 
 Shop项目入口文件中的注册：  
 ```
+//装载你的接口
+DI()->loader->addDirs('Shop');
+
 // 微信签名验证服务
 DI()->filter = 'Common_Request_WeiXinFilter';
 
@@ -695,3 +701,5 @@ DI()->response = 'Common_Response_XML';
 ## 3.6 脚本命令的使用
 ## 3.7 构建更强大的接口服务
 ## 3.8 可重用的扩展类库
+## 本章小结
+## 参考资料

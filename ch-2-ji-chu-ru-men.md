@@ -34,13 +34,13 @@ PhalApi默认使用的是HTTP/HTTPS协议进行通讯，请求接口的完整URL
   
 为了更好地理解这样的对应关系，以下是一些示例对应关系。  
 
+表2-1 入口路径示例对应关系
+
 项目|精简的入口路径|完整的入口路径|入口文件位置|项目源代码位置
 ---|---|---|---|---
 默认的演示项目|/demo|/Public/demo/index.php|./Public/demo/index.php|./Demo
 新建的商城项目|/shop|/Public/shop/index.php|./Public/shop/index.php|./Shop
-
-表2-1 入口路径示例对应关系
-
+  
 如框架自带的演示项目，其目录是：```./Public/demo```，对应的访问入口路径是：```api.phalapi.net/demo```；而新建的商城Shop项目的目录是：```./Public/shop```，则入口路径是：```api.phalapi.net/shop```。  
 
 这个入口路径是可选的，也可以直接使用根目录。如果是这样，则需要调整```./Public/index.php```目录，并且不便于多项目并存的情况。    
@@ -243,6 +243,8 @@ return array(
 #### (5) 参数规则配置
 具体的参数规则，根据不同的类型有不同的配置选项，以及一些公共的配置选项。目前，主要的类型有：字符串、整数、浮点数、布尔值、时间戳/日期、数组、枚举类型、文件上传和回调函数。    
 
+表2-2 参数规则选项一览表  
+
 类型 type|参数名称 name|是否必须 require|默认值 default|最小值 min，最大值 max|更多配置选项（无特殊说明，均为可选）
 ---|---|---|---|---|---
 字符串|string|TRUE/FALSE，默认FALSE|应为字符串|可选|regex选项用于配置正则匹配的规则；format选项用于定义字符编码的类型，如utf8、gbk、gb2312等
@@ -254,8 +256,6 @@ return array(
 枚举|enum|TRUE/FALSE，默认FALSE|应为range选项中的某个元素|---|必须的range选项，为一数组，用于指定枚举的集合
 文件|file|TRUE/FALSE，默认FALSE|数组类型|可选，用于表示文件大小范围，单位为B|range选项用于指定可允许上传的文件类型；ext选项用于表示需要过滤的文件扩展名
 回调|callable/callback|TRUE/FALSE，默认FALSE|---|---|callable/callback选项用于设置回调函数，params选项为回调函数的第三个参数（另外第一个为参数值，第二个为所配置的规则）  
-
-表2-2 参数规则选项一览表  
 
 ##### 公共配置选项
 
@@ -282,6 +282,8 @@ return array(
  + **数据来源 source**  
  指定当前单个参数的数据来源，可以是post、get、cookie、server、request、header、或其他自定义来源。未指定时，默认为统一数据源。目前支持的source与对应的数据源映射关系如下：  
 
+表2-3 source与对应的数据源映射关系  
+  
 source|对应的数据源  
 ---|---
 post     | $_POST              
@@ -291,8 +293,6 @@ server   | $_SERVER
 request  | $_REQUEST           
 header   | $_SERVER['HTTP_X']  
 
-表2-3 source与对应的数据源映射关系  
-  
 通过source参数可以轻松、更自由获取不同来源的参数。以下是一些常用的配置示例。  
 ```
 // 获取HTTP请求方法，判断是POST还是GET
@@ -685,6 +685,8 @@ version=1.2.3
     ),
 ```
 配置的格式有以下四种。  
+  
+表2-4 接口服务白名单匹配类型
 
 类型|配置格式|匹配规则|示例及说明  
 ---|---|---|---  
@@ -692,8 +694,6 @@ version=1.2.3
 方法通配|```Default.*```|匹配某个类的任何方法|即Api_Default接口类的全部方法  
 类通配|```*.Index```|匹配全部接口类的某个方法|即全部接口类的Index方法  
 具体匹配|```Default.Index```|匹配指定某个接口服务|即Api_Default::Index()  
-  
-表2-4 接口服务白名单匹配类型
 
 如果有多个生效的规则，按短路判断原则，即有任何一个白名单规则匹配后就跳过验证，不触发过滤器。  
   
@@ -755,13 +755,13 @@ DI()->request = new Common_Request_Ch1();
 
 这样，除了原来的请求方式，还可以这样请求接口服务。  
 
+表2-5 使用?r=Class/Action格式定制后的方式
+
 
 原来的方式|现在的方式
 ---|---
 /shop/?service=Default.Index|?r=Default/Index   
 /shop/?service=Welcome.Say|?r=Welcome/Say   
-
-表2-5 使用?r=Class/Action格式定制后的方式
 
 这里有几个注意事项： 
 
@@ -776,13 +776,13 @@ DI()->request = new Common_Request_Ch1();
     }
 ```
 重启Nginx后，便可得到以下这样的效果。  
+  
+表2-6 使用Nginx服务器Rewrite规则定制后的方式
 
 原来的方式|现在的方式
 ---|---
 /shop/?service=Default.Index|/shop/default/index   
 /shop/?service=Welcome.Say|/shop/welcome/say  
-  
-表2-6 使用Nginx服务器Rewrite规则定制后的方式
 
 此外，还有第三种指定传递方式的方案。使用第三方路由规则类库，然后通过简单的项目配置，从而实现更复杂、更丰富的规则定制。这部分后面会再进行讨论。  
 
@@ -840,6 +840,8 @@ DI()->request = 'Common_Request_Base64Data';
 
 备用数据源与PhalApi_Request类成员属性的映射关系为：  
 
+表2-7 备用数据源与PhalApi_Request类成员属性的映射关系  
+ 
 类成员属性|对应的数据源  
 ---|---
 $this->post     | $_POST              
@@ -847,9 +849,7 @@ $this->get      | $_GET
 $this->request  | $_REQUEST           
 $this->header   | $_SERVER['HTTP_X']              
 $this->cookie   | $_COOKIE                   
-
-表2-7 备用数据源与PhalApi_Request类成员属性的映射关系  
-  
+ 
 当需要对这些备用数据源进行定制时，可以重写并实现PhalApi_Request类的构造函数，在完成对父类的初始化后，再补充具体的初始化过程。如对于需要使用post_raw数据作为POST数据的情况，可以：  
 ```
 <?php
@@ -940,6 +940,8 @@ array('name' => 'user_email', 'type' => 'email')
 ```
    
 此外，PhalApi框架已自动注册的格式化服务有：  
+ 
+表2-8 内置参数类型格式化服务
 
 参数类型|DI服务名称|说明
 ---|---|---
@@ -953,8 +955,6 @@ enum|_formatterEnum| 枚举格式化服务
 file|_formatterFile| 上传文件格式化服务
 callable|_formatterCallable| 回调格式化服务
 callback|_formatterCallback| 回调格式化服务
- 
-表2-8 内置参数类型格式化服务
 
 在实现扩展新的参数类型时，不应覆盖已有的格式化服务。  
 
@@ -1070,13 +1070,13 @@ class Api_Default extends PhalApi_Api {
 #### (2) 返回状态码 ret
 返回状态码ret，用于表示接口响应的情况。参照自HTTP的状态码，ret主要分为三类：正常响应、非法请求、服务器错误。  
 
+表2-9 返回状态码的分类
+
 分类|ret范围|基数|说明
 ---|---|---|---
 正常响应|200～299|200|表示接口服务正常响应
 非法请求|400～499|400|表示客户端请求非法
 服务器错误|500～599|500|表示服务器内容错误
-
-表2-9 返回状态码的分类
 
 
 正常响应时，通常返回ret = 200，并且同时返回data部分的业务数据，以便客户端能实现所需要的业务功能。 
@@ -2115,13 +2115,13 @@ $ tree ./Shop/ModelProxy/
 
 经过分析数据的稳定性和来源，可以得到以下这样的缓存策略分配。  
 
+表2-10 业务数据的缓存策略示例  
+
 业务数据|缓存策略|考虑点  
 ---|---|---
 商品信息|重量级缓存|商品信息可共享缓存，并且访问量大，需避免DB穿透
 推荐商品|实时数据|每个用户所看到的推荐商品不一样，需要千人千面
 站点配置|轻量级缓存|适合使用单机缓存，且允许回源到文件
-
-表2-10 业务数据的缓存策略示例  
 
 在Model层的目录里，默认情况下，数据来源于数据库。如果有其他来源的数据，可在Model目录里面添加子目录，以示区分。如添加以下目录：  
 ```
@@ -2394,6 +2394,8 @@ $user->where('name LIKE ?', '%dog%');
 
 数据库的配置文件为./Config/dbs.php，默认使用的是MySQL数据库，所以需要配置MySQL的连接信息。servers选项用于配置数据库服务器相关信息，可以配置多组数据库实例，每组包括数据库的账号、密码、数据库名字等信息。不同的数据库实例，使用不同标识作为下标。　　
 
+表2-11 MySQL数据库配置项  
+  
 servers数据库配置项|说明
 ---|---
 host|数据库域名
@@ -2403,17 +2405,15 @@ password|数据库密码
 port|数据库端口
 charset|数据库字符集
 
-表2-11 MySQL数据库配置项  
-  
 tables选项用于配置数据库表的表前缀、主键字段和路由映射关系，可以配置多个表，下标为不带表前缀的表名，其中```__default__```下标选项为缺省的数据库路由，即未配置的数据库表将使用这一份默认配置。  
+
+表2-12 表配置项  
 
 tables表配置项|说明
 ---|---
 prefix|表前缀
 key|表主键
 map|数据库实例映射关系，可配置多组。每组格式为：```array('db' => 服务器标识, 'start' => 开始分表标识, 'end' => 结束分表标识)```，start和end要么都不提供，要么都提供  
-
-表2-12 表配置项  
 
 例如默认数据库配置为：  
 ```
@@ -2797,13 +2797,13 @@ $user->group('note', 'age > 10')
 
 插入操作可分为插入单条纪录、多条纪录，或根据条件插入。  
 
+表2-13 数据库插入操作  
+
 操作|说明|示例|备注|是否PhalApi新增
 ---|---|---|---|---
 insert()|插入数据|$user->insert($data);|全局方式需要再调用insert_id()获取插入的ID|否
 insert_multi()|批量插入|$user->insert_multi($rows);|可批量插入|否
 insert_update()|插入/更新|接口签名：insert_update(array $unique, array $insert, array $update = array()|不存时插入，存在时更新|否
-
-表2-13 数据库插入操作  
 
 插入单条纪录数据，注意，必须是保持状态的同一个NotORM表实例，方能获取到新插入的行ID，且表必须设置了自增主键ID。    
 ```
@@ -2851,12 +2851,12 @@ var_dump($rs);
 ```
 
 #### (3) CURD之更新操作
+  
+表2-14 数据库更新操作  
 
 操作|说明|示例|备注|是否PhalApi新增
 ---|---|---|---|---
 update()|更新数据|$user->where('id', 1)->update($data);|更新异常时返回false，数据无变化时返回0，成功更新返回1|否
-  
-表2-14 数据库更新操作  
 
 根据条件更新数据：  
 ```
@@ -2901,6 +2901,8 @@ var_dump($rs);
 
 查询操作主要有获取一条纪录、获取多条纪录以及聚合查询等。  
 
+表2-15 数据库查询操作  
+
 操作|说明|示例|备注|是否PhalApi新增
 ---|---|---|---|---
 fetch()|循环获取每一行|while($row = $user->fetch()) { //... }||否
@@ -2915,8 +2917,6 @@ count()|查询总数|$total = $user->count('id');|第一参数可省略|否
 min()|取最小值|$minId = $user->min('id');||否
 max()|取最大值|$maxId = $user->max('id');||否
 sum()|计算总和|$sum = $user->sum('age');||否
-
-表2-15 数据库查询操作  
 
 循环获取每一行，并且同时获取多个字段：  
 ```
@@ -3118,12 +3118,12 @@ string(3) "139"
 ```
 
 #### (5) CURD之删除操作
+  
+表2-16 数据库删除操作  
 
 操作|说明|示例|备注|是否PhalApi新增
 ---|---|---|---|---
 delete()|删除|$user->where('id', 1)->delete();|禁止无where条件的删除操作|否
-  
-表2-16 数据库删除操作  
 
 按条件进行删除，并返回影响的行数：  
 ```
@@ -3267,14 +3267,14 @@ PhalApi框架主要提供了**表名 + ID**与**数据库服务器 + 数据库�
 
 下面结合一个示例，讲解如何使用分表策略。假设我们有一个需要数据库分表的demo表，且各个表所映射的数据库实例如下。  
 
+表2-17 demo分表示例  
+
 数据库表|数据库实例
 ---|---
 tbl_demo|db_demo
 tbl_demo_0|db_demo
 tbl_demo_1|db_demo
 tbl_demo_2|db_demo
-
-表2-17 demo分表示例  
 
 首先，需要配置数据库的路由规则。这里的demo表存储比较简单，即有3张分表tbl_demo_0、tbl_demo_1、tbl_demo_2，缺省主表tbl_demo是必要的，当分表不存在时将会使用该缺省主表。数据库的路由规则在前面所说的数据库配置文件./Config/dbs.php中，其中tables为数据库表的配置信息以及与数据库实例的映射关系。因此可以在tables选项中添加此demo表的相关配置。  
 ```
@@ -3732,6 +3732,8 @@ DI()->cache = new PhalApi_Cache_Redis($config);
 
 关于Redis的配置，更多选项如下。  
 
+表2-18 Redis连接配置项  
+
 Redis配置项|是否必须|默认值|说明
 ---|---|---|---
 type|否|unix|当为unix时使用socket连接，否则使用http连接
@@ -3742,8 +3744,6 @@ timeout|否|300|连接超时时间，单位秒
 prefix|否|phalapi:|key前缀
 auth|否|空|Redis身份验证
 db|否|0|Redis库
-
-表2-18 Redis连接配置项  
 
 
 ### 2.6.3 多级缓存策略
@@ -3970,14 +3970,14 @@ DI()->logger = new PhalApi_Logger_File(API_ROOT . '/Runtime',
 
 
 上面的三类日记分别对应的标识如下。  
+  
+表2-18 日志级别标识  
 
 日志类型|日志级别标识
 ---|---
 error 系统异常类|PhalApi_Logger::LOG_LEVEL_ERROR
 info 业务纪录类|PhalApi_Logger::LOG_LEVEL_INFO
 debug 开发调试类|PhalApi_Logger::LOG_LEVEL_DEBUG
-  
-表2-18 日志级别标识  
 
 ### 2.7.2 扩展你的项目
 
@@ -4012,14 +4012,14 @@ DI()->cookie = new PhalApi_Cookie($config);
 ```
 其中，PhalApi_Cookie的构造函数是一个配置数组，上面指定了Cookie的有效域名/子域名。其他的选项还有：  
 
+表2-19 COOKIE的配置选项  
+
 配置选项|说明|默认值
 ---|---|---
 path|Cookie有效的服务器路径|NULL
 domain|Cookie的有效域名/子域名|NULL
 secure|是否仅仅通过安全的HTTPS连接传给客户端|FALSE
 httponly|是否仅可通过HTTP协议访问|FALSE
-
-表2-19 COOKIE的配置选项  
 
 注册COOKIE服务后，便可以开始在项目中使用了。COOKIE的使用主要有三种操作，分别是：设置COOKIE、获取COOKIE、删除COOKIE。下面是一些简单的使用示例。  
 ```
@@ -4043,12 +4043,12 @@ DI()->cookie->delete('name');
 
 当需要使用这个升级版COOKIE替代简单版COOKIE服务时，可使用PhalApi_Cookie_Multi实例进行重新注册。在初始化时，PhalApi_Cookie_Multi构建函数的第一个参数配置数组，除了上面简单版的配置项外，还有：  
 
+表2-20 COOKIE升级版的额外配置选项  
+
 配置选项|说明|默认值
 ---|---|---
 crypt|加解密服务，须实现PhalApi_Crypt接口|DI()->crypt
 key|crypt使用的密钥|debcf37743b7c835ba367548f07aadc3
-
-表2-20 COOKIE升级版的额外配置选项  
 
 假设项目中简单地使用base64对COOKIE进行加解密，则可先添加加解密服务的实现类。  
 ```
