@@ -33,7 +33,4 @@ class Api_Default extends PhalApi_Api {
             'time' => $_SERVER['REQUEST_TIME'],
         );
 	}
-
-    public function test() {
-    }
 }

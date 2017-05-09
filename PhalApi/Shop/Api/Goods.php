@@ -16,6 +16,7 @@ class Api_Goods extends PhalApi_Api {
      * @return string   goods_name  商品名称 
      * @return int      goods_price 商品价格
      * @return string   goods_image 商品图片
+     * @exception 406 签名失败
      */
     public function snapshot() {
         /**

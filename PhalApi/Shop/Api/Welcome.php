@@ -1,4 +1,8 @@
 <?php
+/**
+ * Hello Wolrd示例类
+ */
+
 class Api_Welcome extends PhalApi_Api {
 
     public function getRules() {
@@ -9,6 +13,10 @@ class Api_Welcome extends PhalApi_Api {
         );
     }
 
+    /**
+     * 欢迎光临
+     * @desc 简单的Hello Wolrd返回
+     */
     public function say() {
         DI()->tracer->mark('欢迎光临');
 
