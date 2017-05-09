@@ -1249,9 +1249,293 @@ a_response = PhalApi::Client.create.withHost('http://demo.phalapi.net') \
  
 当需要扩展时，同样分两步。类似过滤器扩展，这里不再赘述。
 
-其他语言的SDK包使用类似，这里不再赘述。  
+除了Java和Ruby外，目前已提供的SDK包还有C#版、Golang版、Object-C版、Javascript版、PHP版、Python版等。其他语言的SDK包使用类似，这里不再赘述。  
 
 ## 3.6 脚本命令的使用
+
+自动化是提升开发效率的一个有效途径。PhalApi致力于简单的接口服务开发，同时也致力于通过自动化提升项目的开发速度。为此，提供了创建项目、生成单元测试骨架代码、生成数据库建表SQL、生成接口文件代码这些脚本命令。应用这些脚本命令，能快速完成重复但消耗时间的工作。下面将分别进行说明。  
+
+在使用这些脚本命令前，需要注意以下几点。  
+
+第一点是执行权限，当未设置执行权限时，脚本命令会提示无执行权限，类似这样。  
+```
+$ ./PhalApi/phalapi-buildapp 
+-bash: ./PhalApi/phalapi-buildapp: Permission denied
+```
+那么需要这样设置脚本命令的执行权限。  
+```
+$ chmod +x ./PhalApi/phalapi-build*
+```
+  
+其次，对于Linux平台，可能会存在编码问题，例如提示：  
+```
+$ ./PhalApi/phalapi-buildapp 
+bash: ./PhalApi/phalapi-buildapp: /bin/bash^M: bad interpreter: No such file or directory
+```
+这时，可使用dos2unix命令转换一下编码。  
+```
+$ dos2unix ./PhalApi/phalapi-build*
+dos2unix: converting file ./PhalApi/phalapi-buildapp to Unix format ...
+dos2unix: converting file ./PhalApi/phalapi-buildcode to Unix format ...
+dos2unix: converting file ./PhalApi/phalapi-buildsqls to Unix format ...
+dos2unix: converting file ./PhalApi/phalapi-buildtest to Unix format ...
+```
+
+最后一点是，在任意目录位置都是可以使用这些命令的，但会与所在的项目目录绑定。通常，为了更方便使用这些命令，可以将这些命令软链到系统命令下。例如：  
+```
+$ cd /pah/to/PhalApi/PhalApi
+$ sudo ln -s /path/to/phalapi-buildapp /usr/bin/phalapi-buildapp
+$ sudo ln -s /path/to/phalapi-buildsqls /usr/bin/phalapi-buildsqls
+$ sudo ln -s /path/to/phalapi-buildtest /usr/bin/phalapi-buildtest
+$ sudo ln -s /path/to/phalapi-buildcode /usr/bin/phalapi-buildcode
+```
+
+### 3.6.1 phalapi-buildapp命令
+
+ ```phalapi-buildapp```脚本命令，可用于创建一个新的项目，最终效果和在线安装向导类似。其使用说明如下：  
+![](images/ch-3-buildapp.png)  
+图3-8 phalapi-buildapp命令的Usage  
+  
+其中，
+
+ + 第一个参数app：是待创建的项目名称，通常以字母开头，由字母和数字组成  
+
+例如，现在让我们来创建一个新的项目，假设是用来提供活动相关接口服务的，名称为：act，那么可以执行以下命令。  
+```
+$ ./PhalApi/phalapi-buildapp act
+```
+
+执行后，会看到类似以下的输出。  
+```
+create Act ...
+create Act tests ...
+create Act bootstarp ...
+
+OK! Act has been created successfully!
+```
+
+最后，可以看到会增加了以下两个目录，一个是放置act项目源代码的目录，另一个是该项目对外访问的目录。  
+```
+./Act
+./Public/act
+```
+
+我们还可以试请求一下默认接口服务，发现也是可以正常响应的。  
+```
+$ curl "http://api.phalapi.net/act/"
+{"ret":200,"data":{"title":"Hello World!","content":"PHPer\u60a8\u597d\uff0c\u6b22\u8fce\u4f7f\u7528PhalApi\uff01","version":"1.4.0","time":1494343386},"msg":""}
+```
+
+### 3.6.2 phalapi-buildtest命令
+
+当需要对某个类进行单元测试时，可使用```phalapi-buildtest```脚本生成对应的单元测试骨架代码，其使用说明如下：  
+![](images/ch-3-buildtest.png)  
+  
+其中，
+
+ + 第一个参数file_path：是待测试的源文件相对/绝对路径  
+ + 第二个参数class_name：是待测试的类名  
+ + 第三个参数bootstrap：是测试启动文件，通常是/path/to/test_env.php文件  
+ + 第四个参数author：你的名字，默认是dogstar  
+   
+通常，可以先写好类名以及相应的接口，然后再使用此脚本生成单元测试骨架代码。以Shop项目中Hello World接口为例为例，当需要为Api_Welcome类生成单元测试骨架代码时，可以依次这样操作。  
+```
+$ cd ./Shop/Tests
+$ ../../PhalApi/phalapi-buildtest ../Api/Welcome.php Api_Welcome ./test_env.php > ./Api/Api_Welcome_Test.php
+```
+  
+最后，需要将生成好的骨架代码，重定向保存到你要保存的位置。通常与产品代码对齐，并以“{类名} + _Test.php”方式命名，如这里的Api_Welcome_Test.php。  
+
+生成的骨架代码类似如下，为节省边幅，注释已省略。  
+```
+// Tests$ vim ./Api/Api_Welcome_Test.php
+<?php
+//require_once dirname(__FILE__) . '/test_env.php';
+
+if (!class_exists('Api_Welcome')) {
+    require dirname(__FILE__) . '/../Api/Welcome.php';
+}
+
+class PhpUnderControl_ApiWelcome_Test extends PHPUnit_Framework_TestCase
+{
+    public $apiWelcome;
+
+    protected function setUp()
+    {
+        parent::setUp();
+
+        $this->apiWelcome = new Api_Welcome();
+    }
+
+    protected function tearDown()
+    {
+    }
+
+    public function testGetRules()
+    {
+        $rs = $this->apiWelcome->getRules();
+    }
+
+    public function testSay()
+    {
+        $rs = $this->apiWelcome->say();
+    }
+}
+```
+这里，还需要根据情况手动更改一下test_env.php测试环境文件的位置，即去掉注释并改成：  
+```
+require_once dirname(__FILE__) . '/../test_env.php';
+```
+
+此时生成的单元测试骨架，会对public访问级别的函数成员生成一一对应的测试用例，并具备一些基本的验证功能。对于刚生成的单元测试，可以试运行一下。  
+```
+Tests$ phpunit ./Api/Api_Welcome_Test.php 
+PHPUnit 4.3.4 by Sebastian Bergmann.
+
+..
+
+Time: 7 ms, Memory: 6.50Mb
+
+OK (2 tests, 0 assertions)
+```
+
+//TODO 返回类型的验证，默认参数，测试用例。
+
+###(3)生成数据库建表SQL
+当需要创建数据库表时，可以使用```phalapi-buildsqls```脚本结合配置文件dbs.php生成建表SQL，这个工具在创建分表时尤其有用，其使用如下：  
+![](http://7xiz2f.com1.z0.glb.clouddn.com/2_20160422210230.jpg)  
+  
+其中，
+
+ + 第一个参数dbs_config：是指向数据库配置文件./Config/dbs.php的路径，可以使用相对路径  
+ + 第二个参数table：是需要创建sql的表名，每次生成只支持一个  
+ + 第三个参数engine：（可选）是指数据库表的引擎，可以是：Innodb或者MyISAM  
+  
+> 温馨提示：需要提前先将建表的SQL语句（除主键id和ext_data字段外）放置到./Data/目录下，文件名为：{表名}.sql。  
+  
+如，我们需要生成10用户user_session表的的建表语句，那么需要添加数据文件./Data/user_session.sql（除主键id和ext_data字段外）：  
+```
+      `user_id` bigint(20) DEFAULT '0' COMMENT '用户id',
+      `token` varchar(64) DEFAULT '' COMMENT '登录token',
+      `client` varchar(32) DEFAULT '' COMMENT '客户端来源',
+      `times` int(6) DEFAULT '0' COMMENT '登录次数',
+      `login_time` int(11) DEFAULT '0' COMMENT '登录时间',
+      `expires_time` int(11) DEFAULT '0' COMMENT '过期时间',
+```
+  
+然后，进入到项目根目录，执行命令：  
+```
+$ php ./PhalApi/phalapi-buildsqls ./Config/dbs.php user_session
+```
+  
+就会看到生成好的SQL语句了，类似：  
+```
+CREATE TABLE `phalapi_user_session_0` (
+      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+      ... ...
+      PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `phalapi_user_session_1` (
+      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+      ... ...
+      `ext_data` text COMMENT 'json data here',
+      PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `phalapi_user_session_2` (
+      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+      ... ...
+      `ext_data` text COMMENT 'json data here',
+      PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `phalapi_user_session_3` (
+      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+      ... ...
+      `ext_data` text COMMENT 'json data here',
+      PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `phalapi_user_session_4` (
+      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+      ... ...
+      `ext_data` text COMMENT 'json data here',
+      PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `phalapi_user_session_5` (
+      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+      ... ...
+      `ext_data` text COMMENT 'json data here',
+      PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `phalapi_user_session_6` (
+      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+      ... ...
+      `ext_data` text COMMENT 'json data here',
+      PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `phalapi_user_session_7` (
+      ... ...
+      `ext_data` text COMMENT 'json data here',
+      PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `phalapi_user_session_8` (
+      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+      ... ...
+      `ext_data` text COMMENT 'json data here',
+      PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `phalapi_user_session_9` (
+      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+      ... ...
+      `ext_data` text COMMENT 'json data here',
+      PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+```
+  
+最后，便可把生成好的SQL语句，导入到数据库，进行建表操作。
+
+###(4)生成接口代码 - V1.3.4及以上版本支持
+当需要编写开发一个接口时，可以使用```phalapi-buildcode```脚本生成基本的Api、Domain和Model代码。此脚本不是很强悍的，项目可以根据自己的喜欢使用，或者修改定制自己的模板。其使用如下：  
+![](http://7xiz2f.com1.z0.glb.clouddn.com/4_20160514155143.png)  
+  
+其中，
+
+ + 第一个参数app_path：是指项目根目录到你的项目的相对路径  
+ + 第二个参数api_path：是需要创建接口的相对项目的相对路径，支持多级目录，可不带.php后缀  
+ + 第三个参数author：（可选）你的名字，默认为空
+ + 第四个参数overwrite：（可选）是否覆盖已有的代码文件，默认为否
+  
+例如，我们要为Demo项目生成一个新的接口文件./AA/BB/CC.php，则可以：  
+```
+$ cd /path/to/PhalApi
+$ ./PhalApi/phalapi-buildcode Demo AA/BB/CC dogstar
+Start to create folder /mnt/hgfs/F/PHP/PhalApi/PhalApi/../Demo/Api/AA/BB ...
+Start to create folder /mnt/hgfs/F/PHP/PhalApi/PhalApi/../Demo/Domain/AA/BB ...
+Start to create folder /mnt/hgfs/F/PHP/PhalApi/PhalApi/../Demo/Model/AA/BB ...
+Start to create file /mnt/hgfs/F/PHP/PhalApi/PhalApi/../Demo/Api/AA/BB/CC.php ...
+Start to create file /mnt/hgfs/F/PHP/PhalApi/PhalApi/../Demo/Domain/AA/BB/CC.php ...
+Start to create file /mnt/hgfs/F/PHP/PhalApi/PhalApi/../Demo/Model/AA/BB/CC.php ...
+
+OK! AA/BB/CC has been created successfully!
+
+```
+  
+可以看到生成的代码有：  
+![](http://7xiz2f.com1.z0.glb.clouddn.com/cc20160514155950.png)   
+    
+访问接口：  
+![](http://7xiz2f.com1.z0.glb.clouddn.com/aa20160514160328.png)  
+    
+最后，在线接口列表，可以看到：  
+![](http://7xiz2f.com1.z0.glb.clouddn.com/bb20160514160158.png)  
+
 ## 3.7 构建更强大的接口服务
 ## 3.8 可重用的扩展类库
 ## 本章小结
