@@ -1222,7 +1222,7 @@ puts a_response.ret, a_response.data, a_response.msg
 
 #### (2) 扩展你的过滤器和结果解析器
 
- + 扩展过滤器
+ + 扩展过滤器  
 
 当服务端接口需要接口签名验证，或者接口参数加密传送，或者压缩传送时，可以实现此过滤器，以便和服务端操持一致。  
  
@@ -1243,7 +1243,8 @@ a_response = PhalApi::Client.create.withHost('http://demo.phalapi.net') \
 	   .request
 ```
 
- + 扩展结果解析器
+ + 扩展结果解析器  
+
 当返回的接口结果不是JSON格式时，可以重新实现此接口。  
  
 当需要扩展时，同样分两步。类似过滤器扩展，这里不再赘述。
