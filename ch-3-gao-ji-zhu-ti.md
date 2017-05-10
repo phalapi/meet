@@ -1982,6 +1982,8 @@ http://api.phalapi.net/shop/test_qiniu.html
  + 3、以接口的形式实现计划任务
  + 4、提供统一的crontab调度
 
+下面按安装、使用配置、使用的顺序，依次讲解。 
+
  + **安装**
 
 此Task扩展已默认内置在PhalApi框架中，位于./Library/Task，所以不需要安装便可直接使用。  
@@ -2164,7 +2166,233 @@ $mq = new Task_MQ_DB();
 $mq = new Task_MQ_Array();
 ```
 
+配置完MQ队列后，还需要配置调度的方式。调度的方式有两种：本地和远程调度。
+
+本地调度的创建如下：
+```
+// 每批次弹出10个进行处理
+$runner = new Task_Runner_Local($mq, 10);  
+```
+需要注意的是，每次执行一个计划任务，都会重新初始化必要的DI资源服务。且此调度方式不能用于接口请求时的同步调用。  
+
+远程调度，需要先添加以下配置： 
+```
+    /**
+     * 计划任务配置
+     */
+    'Task' => array(
+        // Runner设置，如果使用远程调度方式，请加此配置
+        'runner' => array(
+            'remote' => array(
+                'host' => 'http://api.phalapi.net/shop/',
+                'timeoutMS' => 3000,
+            ),
+        ),
+    ),
+```
+
+其中：  
+  
+表3-8 远程调度配置说明  
+
+选项|是否必须|默认值|说明
+---|---|---|---
+host|是||接口域名链接
+timeoutMS|否|3000|接口超时时间，单位毫秒
+  
+然后可以这样创建：
+```
+// 使用默认的连接器 - HTTP + POST的方式
+// 每批次弹出10个进行处理
+$runner = new Task_Runner_Remote($mq, 10);
+
+// 或者，指定连接器
+$connector = new Task_Runner_Remote_Connector_Impl();
+$runner = new Task_Runner_Remote($mq, 10, $connector);
+```
+
  + **使用**
+
+Task扩展的使用，又分为两个环节。首先是把待执行的接口服务和相关参数加入到MQ队列，然后再通过统一调度在后台异步执行。  
+
+在上面注册了```DI()->task```服务后，便可通过```Task_MQ::add($service, $params = array())```接口添加待执行的接口服务和相关参数到MQ队列，第一个参数```$service```是待执行的接口服务，第二个可选参数```$params```是传递给待执行接口服务的参数。  
+
+例如待执行的接口服务为```Task.DoSth```，且需要的参数是```&id=1```，那么可以：  
+```
+DI()->taskLite->add('Task.DoSth', array('id' => 1));
+```
+
+这样，就可以把相关的信息加入队列了，通过对应的存储媒介，可以查看到对应的队列信息。在产生了队列后，接下来就是要对此队列进行消费，也就是通过计划任务来进行消费、调度。  
+
+下面是第二个环节的讲解：计划任务的启动。在启动计划任务前，我们需要编写简单的脚本，一如这样：  
+```
+#!/usr/bin/env php
+<?php
+require_once '/path/to/Public/init.php';
+
+DI()->loader->addDirs('Demo');
+
+if ($argc < 2) {
+    echo "Usage: $argv[0] <service> \n\n";
+    exit(1);
+}
+
+$service = trim($argv[1]);
+
+$mq = new Task_MQ_Redis();
+$runner = new Task_Runner_Local($mq);
+$rs = $runner->go($service);
+
+echo "\nDone:\n", json_encode($rs), "\n\n";
+```
+然后使用nohup或者crontab启动即可。注意上面的挂靠的项目，应该是待执行接口服务所在的目录。而使用的MQ队列，应该和前面配置的MQ保持一致，以便保证写入和消费的是同一个MQ。  
+
+除了上面简单的启动方式外，Task扩展还提供一种具体的、统一的启动方式，即使用crontab的方式。  
+  
+首先，创建以下表，或参见./Library/Task/Data/phalapi_task_progress.sql文件自行调整表名称前缀。  
+```
+CREATE TABLE `phalapi_task_progress` (
+      `id` bigint(20) NOT NULL AUTO_INCREMENT,
+      `title` varchar(200) DEFAULT '' COMMENT '任务标题',
+      `trigger_class` varchar(50) DEFAULT '' COMMENT '触发器类名',
+      `fire_params` varchar(255) DEFAULT '' COMMENT '需要传递的参数，格式自定',
+      `interval_time` int(11) DEFAULT '0' COMMENT '执行间隔，单位：秒',
+      `enable` tinyint(1) DEFAULT '1' COMMENT '是否启动，1启动，0禁止',
+      `result` varchar(255) DEFAULT '' COMMENT '运行的结果，以json格式保存',
+      `state` tinyint(1) DEFAULT '0' COMMENT '进程状态，0空闲，1运行中，-1异常退出',
+      `last_fire_time` int(11) DEFAULT '0' COMMENT '上一次运行时间',
+      PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+```
+  
+接着，在Linux系统上添加crontab计划任务。  
+```
+$ crontab -e
+
+*/1 * * * * /usr/bin/php /path/to/PhalApi/Library/Task/crontab.php >> /tmp/phalapi_task_crontab.log 2>&1
+```
+记得相应调整此crontab.php中挂靠的项目目录，以便能正常自动加载待执行的接口服务。还记得我们一致的风格吗？先挂靠，再使用。  
+
+最后，在数据库配置计划任务。 
+```
+INSERT INTO `phalapi_task_progress`(title, trigger_class, fire_params, interval_time)  VALUES('你的任务名字', 'Task_Progress_Trigger_Common', 'Task_Demo.DoSth&Task_MQ_File&Task_Runner_Local', '300');
+```
+注意，在配置时，需要指明MQ和Runner的类型。各个字段的说明，可参考上面的表字段的说明。  
+
+  
+这些都配置好后，当再```Task.DoSth```加入到MQ队列时，后台将会定时执行对应的接口服务。即下面这样的代码。  
+```
+<?php
+class Api_Task extends PhalApi_Api {
+
+      public function doSth() {
+            // ...
+      }
+}
+```
+
+##### 延伸：计划任务的核心设计解读
+
+在Task这个计划任务中，为了让领域业务更清晰明了，我们采用了设计模式进行了巧妙的设计。下面将介绍这一设计过程。主要是以桥接模式为主模式，慢慢融入适配器模式、模板方法，同时辅以单元测试和小步重构。  
+
+ + **桥接模式 - 数据与行为独立变化**
+
+为了给计划任务一个执行的环境，我们提供了**计划任务调度器**，即：Task_Runner。每个计划任务需要调度的接口是不一样的，即不同的接口服务决定不同的行为；每个行为需要的数据也不一样，即不同的接口参数决定不同的数据。  
+  
+自然而言的，Task_Runner按照桥接模式，其充当的角色如下：  
+![](images/ch-3-task-1.jpg)  
+图3-14 Task_Runner充当的角色  
+
+然后，我们可以分另各自实现接口服务和MQ队列，而让这两者互不影响。  
+![](images/ch-3-task-2.jpg) 
+图3-15 桥接模式在Task扩展中的应用  
+
+ + **适配器模式 - 对象适配器和类适配器**
+
+在对MQ进行实现时，我们提供的Redis MQ队列、文件MQ队列和数据库MQ队列等，都使用了适配器模式，以重用框架已有的功能。其中，Redis MQ队列和文件MQ队列是属于对象适配器，数据库MQ队列是类适配器。对于对象适配器，我们也提供了外部注入，以便客户端在使用时可以轻松定制扩展，当然也可以使用默认的缓存。  
+  
+至此，整体的UML静态类结构如下所示。  
+![](images/ch-3-task-3.jpg)  
+图3-16 添加适配器后的静态结构  
+
+这样以后，我们可以这样根据创建不同的MQ队列，创建MQ的形式多种多样。 
+```
+// Redis MQ队列
+$mq = Task_MQ_Redis();
+// 或
+$mq = Task_MQ_Redis(new PhalApi_Cache_Redis(array('host' => '127.0.0.1', 'port' => 6379)));
+
+// 文件MQ队列
+$mq = new Task_MQ_File();
+// 或
+$mq = new Task_MQ_File(new PhalApi_Cache_File(array('path' => '/tmp/cache')));
+
+// 数据库MQ队列
+$mq = new Task_MQ_DB();
+
+// 数组MQ队列
+$mq = new Task_MQ_Array();
+```
+
+ + **模板方法 - 本地和远程两种调度策略**
+
+在完成底层的实现后，我们可以再来关注如何调度的问题，目前可以有本地调度和远程调度两种方式。 
+
+ + 本地调度：是指本地模拟接口的请求，以实现接口的调度
+ + 远程调度：是指通过计划任务充当接口客户端，通过请求远程服务器的接口以完成接口的调度
+   
+为此，我们的设计演进成了这样：
+![](images/ch-3-task-4.jpg)  
+图3-17 细化调度方式后的静态结构    
+
+上图多了两个调度器的实现类，并且远程调度器会将远程的接口请求功能委托给连接器来完成。  
+  
+ + **设计审视**
+
+好了！让我们再回头审视这样的设计，是否是属于良好的设计，是否是恰如其分的设计。  
+  
+首先，我们在高层，也就是规约层得到了很好的约定。不必过多地深入理解计划任务内部的实现细节，也可以轻松得到以下这样的概念流程：    
+计划任务调度器（Task_Runner）从MQ队列（Task_MQ）中不断取出计划任务接口服务(PhalApi_Api)进行消费。所以在概念是它是清晰的，很好地体现了计划任务这一领域的核心业务流程。  
+   
+再往下一层，则是具体的实现，即我们所说的实现层。客户可以根据自己的需要进行选取使用，也可以扩展他们需要的MQ队列。重要的是，他们需要自己实现计划任务的接口服务。  
+  
+根据爱因斯坦说的，要保持简单，但不要过于简单。为了更好地理解计划任务的运行过程，我们提供了简单的时序图。   
+![](images/ch-3-task-5.jpg)  
+图3-18 计划任务的时序图  
+  
+上图主要体现了两个操作流程：加入MQ和MQ消费。其中，注意这两个流程是共享同一个MQ的，否则不能共享数据。同时调度是会进行循环式的调度，并且穷极之。
+
+ + **没有引入工厂方法的原因**
+
+我们在考虑是否需要提供工厂方法来创建计划任务调度器，或者MQ。但发现，设计是如此明了，不必要再引入工厂方法来增加使用的复杂性，因为存在组合的情况。而且，对于后期客户端进行扩展也不利。  
+  
+当需要启动一个计划任务时，可以这样写：
+```
+$mq = new Task_MQ_Redis();
+$runner = new Task_Runner_Local($mq);
+
+$runner->go('MyTask.DoSth');
+```
+上面简单的组合可以有：4种MQ * 2种调度 = 8种组合。所以，我们最后决定不使用工厂方法，而是把这种自由组合的权利交给客户端。  
+
+ + **失败重试与并发问题**
+
+除了对计划任务使用什么模式进行探讨外，我们还需要关注计划任务其他运行时的问题。  
+  
+一个考虑的是失败重试，这一点会发生在远程调度中，因为接口请求可能会超时。这时我们采用的是失败轮循重试。即，把失败的任务放到MQ的最后，等待下一批次的尝试。连接器在进行请求时，也会进行一定次数的超时重试。这里主要是为了预防接口服务器崩溃后的计划任务丢失。  
+  
+另一个则是并发的问题。这里并没有过多地进行加锁策略。而是把这种需要的实现移交给了客户端。因为加锁会使得计划任务更为复杂，而且有时不一定需要使用，如一个计划任务只有一个进程时，也就是单个死循环的脚本进程的情况。  
+
+ + **客户端的使用**
+
+最后，客户端的使用就很简单了。  
+```
+$mq = new Task_MQ_Redis();
+$taskLite = new Task_Lite();
+
+$taskLite->add('MyTask.DoSth', array('id' => 888));
+```
+
 
 #### (2) Webchat微信开发扩展 
 
