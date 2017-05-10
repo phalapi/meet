@@ -2424,7 +2424,7 @@ $taskLite->add('MyTask.DoSth', array('id' => 888));
 
  + **Webchat的安装**
 
-下载PhalApi-Library扩展库后，将Wechat微信开发扩展目录挂账到你的项目，如：
+下载PhalApi-Library扩展库后，将Wechat微信开发扩展目录拷贝到你的项目，如：
 ```
 cp /path/to/PhalApi-Library/Wechat ./PhalApi/Library/ -R
 ```
@@ -2578,6 +2578,54 @@ $ tree ./Library/Wechat/Tests/
 ```
 
 #### (3) 基于PHPMailer的邮件发送扩展 
+
+PHPMailer扩展是基于PHPMailer发送邮件的扩展，此扩展相对于上面的Task和Wechat扩展而言，其安装、配置和使用非常简单。最后，我们也稍微来看一下此扩展类库的实现方式。  
+
+ + **PHPMailer扩展的安装**
+
+下载PhalApi-Library扩展库后，将PHPMailer扩展目录拷贝到你的项目，如：
+```
+cp /path/to/PhalApi-Library/PHPMailer ./PhalApi/Library/ -R
+```
+  
+到此安装完毕！接下是扩展的配置。
+
+ + **PHPMailer扩展的配置**
+
+需要在./Config/app.php配置文件中追加以下扩展配置。  
+```
+  'PHPMailer' => array(
+    'email' => array(
+        'host' => 'smtp.gmail.com',
+        'username' => 'XXX@gmail.com',
+        'password' => '******',
+        'from' => 'XXX@gmail.com',
+        'fromName' => 'PhalApi团队',
+        'sign' => '<br/><br/>请不要回复此邮件，谢谢！<br/><br/>-- PhalApi团队敬上',
+    ),
+  ),
+```
+上面配置内容，可根据项目情况相应调整。其中，host是邮件服务器的域名，username是发件人的邮件地址，password为邮箱密码，from为发件人邮箱，fromName为发件人的名字，最后的sign是邮件内容里最后的签名，使用HTML格式。
+
+ + **PHPMailer扩展的注册**
+
+可以在初始化或入口文件处注册，也可以在需要时创建使用。由于邮件服务使用不多，可以在使用时再创建使用。例如：  
+```
+$mailer = new PHPMailer_Lite(true);
+```
+
+ + **PHPMailer扩展的使用**
+
+创建好实例后，便可以发送邮件了。发送邮件，只需要一行代码，即指定收件人地址、邮件标题和邮件内容。  
+```
+$mailer->send('chanzonghuang@gmail.com', 'Test PHPMailer Lite', 'something here ...');
+```
+
+如果需要发送邮件给多个邮箱时，可以使用数组，例如： 
+```
+$addresses = array('chanzonghuang@gmail.com', 'test@phalapi.com');
+$mailer->send($addresses, 'Test PHPMailer Lite', 'something here ...');
+```
 
 ### 3.7.4 从微架构到扩展类库的演进
 
