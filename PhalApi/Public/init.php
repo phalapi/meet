@@ -57,3 +57,6 @@ if (!empty($_GET['callback'])) {
     DI()->response = new PhalApi_Response_JsonP($_GET['callback']);
 }
  */
+
+DI()->qiniu = new Qiniu_Lite();
+

@@ -1795,7 +1795,7 @@ $ curl "http://api.phalapi.net/shop/?service=Stock.Go"
 若重复创建接口服务时，会提示代码已存在，但可以通过使用第四个参数强制覆盖。  
 ```
 $ ./PhalApi/phalapi-buildcode Shop Stock
-/path/to/PhalApi/PhalApi/../Shop/Api/Stock.php exists! Stop to create again!
+/path/to/PhalApi/PhalApi/../Shop/Api/Stock.php exists! Stop creating again!
 ```
 
 当待创建的接口服务类有多级目录时，可以使用目录分割符，例如现在需要创建一个支付宝支付相关的接口服务类Pay_Alipay，则可以：  
@@ -1811,12 +1811,178 @@ Start to create file /path/to/PhalApi/PhalApi/../Shop/Model/Pay/Alipay.php ...
 
 OK! Pay/Alipay has been created successfully!
 ```
+由于是多级目录，所以在创建代码模板文件前，会先创建未存在的目录。生成的代码和上面类似，这里不再赘述。   
+
 注意，参数应该传Pay/Alipay，而不是Pay_Alipay。即下面这样的使用是错误的：  
 ```
 $ ./PhalApi/phalapi-buildcode Shop Pay_Alipay
 ```
 
-## 3.7 超越HTTP/HTTPS协议
-## 3.8 可重用的扩展类库
+## 3.7 可重用的扩展类库
+
+PhalApi开源接口框架的一大特色，是提供了可重用的扩展类库，致力于与更多的开源项目一起提供企业级的解决方案。虽然此部分的扩展很多都是基于已有的第三方开源开发实现，但我们所做的不仅仅是代码的搬运工，在某个程度上是在系统架构上对组件库的重用，以及在此通过引入防腐层，避免陷入供应商锁定（Vendor Lock-In）。 
+
+除此之外，在PhalApi框架基础上，快速引入符合实际项目开发需求的扩展类库。你会发现，原来编程本来就是一件如此简单的事情，就像搭积木一样。也正如我们一直推崇的：接口，从简单开始！ 
+
+### 3.7.1 扩展类库简介
+
+PhalApi扩展类库的项目名称为PhalApi-Library，其Github地址是：  
+```
+https://github.com/phalapi/phalapi-library
+```
+在国内码云的项目地址是：  
+```
+http://git.oschina.net/dogstar/PhalApi-Library
+```
+这两个仓库的代码会同步一致，开发人员可根据自己的喜欢选择使用。  
+
+此仓库下每个目录代表一个扩展类库，，各扩展类库之间相互独立，可以根据需要自动下载安装使用。  
+
+目前，截止编写此书时，已有30多个扩展类库。相信随着开源社区的不断分享，后续将会有更多优秀、可重用的扩展类库。  
+
+表3-4 当前扩展类库列表  
+
+扩展类库目录|扩展类库名称|简要说明
+---|---|---
+APK|APK文件解包处理|对APK进行解包，支持绝大部分APK文件处理。
+Auth|Auth权限扩展|实现了基于用户与组的权限认证功能，与RBAC权限认证类似，主要用于对服务级别的功能进行权限控制。
+CLI|CLI扩展类库|可用于开发命令行应用，基于GetOpt，主要作用是将命令参数进行解析和处理。 
+Cluster|基于PhalApi的DB集群拓展|为了解决大量数据写入分析的问题，支持大量select、和大量insert。
+CryptTraffic|移动设备通信加密|用于移动设备通信加密。 
+Excel|PhalApi-Excel|读取Excel。  
+Facepp|face++接口|face++接口。
+FastRoute|FastRoute快速路由|基于FastRoute实现，通过配置实现自定义路由配置，从而轻松映射service接口服务。
+Image|PhalApi-Image图像处理|按照尺寸压缩上传图片，参考自ThinkPhP图形处理。  
+KafKa|简单舒适的PHP-KafKa拓展|基于rdKafKa封装的一个简单舒适KafKa拓展。
+Log4php|基于log4php的日志扩展|兼容PhalApi日志的接口操作，同时基于log4php完成更多出色的日志工作。
+Medoo|Medoo数据库驱动|Medoo数据库驱动。  
+OSS|PhalApi-OSS阿里云OSS包|对阿里云的OSS文件服务器的封装。
+PHPExcel|PhalApi-PHPExcel扩展|提供了更为强大的Excel处理功能。
+PHPMailer|基于PHPMailer的邮件发送|用于发送邮件。
+PHPRPC|代理模式下phprpc协议的轻松支持|可用于phprpc协议的调用，服务端只需要简单添加入口即可完美切换。
+Pay|基于PhalApi的第三方支付扩展|支持微信支付和支付宝支付。
+Payment|微信支付及支付宝支付扩展|支持微信支付和支付宝支付。
+Qiniu|七牛云存储接口调用|可用于将图片上传到七牛云存储，或者七牛SDK包提供的其他功能。
+RabbitMQ|PhalApi-RabbitMQ队列拓展|基于队列标杆中的RabbitMQ的队列扩展。
+Redis|基于PhalApi的Redis拓展|提供更丰富的Redis操作，并且进行了分库处理可以自由搭配。
+SMS|PhalApi-SMS容联云短信服务器扩展|基于容联云通讯，发送短信。
+Smarty|基于PhalApi的Smarty扩展|基于老牌的PHP模版引擎Smarty，提供视图渲染功能。
+Swoole|Swoole扩展|基于swoole，支持的长链接和异步任务实现。
+ThirdLogin|第三方登录扩展|第三方登录。
+Translate|PhalApi-Translate百度地图翻译扩展|基于百度翻译的翻译。
+UCloud|图片上传扩展|用于图片文件上传。
+User|User用户扩展|提供用户、会话和集成第三方登录。
+View|Vuew视图扩展|提供视图渲染功能。
+Wechat|微信开发扩展|可用于微信的服务号、订阅号、设备号等功能开发。
+Xhprof|性能分析工具PhalApi-Xhprof|对Facebook开源的轻量级PHP性能分析工具进行了封装拓展。
+YoukuClient|优酷开放平台接口扩展|用于调用优酷开放平台的接口。
+Zip|PhalApi-Zip压缩文件处理|用于处理文件压缩。
+
+
+### 3.7.2 安装、配置注册与使用
+
+对于某个扩展类库，当需要使用时，可以安装、配置、使用这样的步骤顺序整合到项目。  
+
+#### (1) 安装
+
+扩展类库的安装很简单，直接将PhalApi-Library目录所需要的扩展类库复制到项目的Library目录下即可。  
+
+例如，需要使用七牛云存储扩展Qiniu时，如未签出PhalApi-Library项目，可以签出或下载。  
+```
+git clone https://git.oschina.net/dogstar/PhalApi-Library.git
+```
+
+随后，将七牛云存储扩展的目录Qiniu拷贝到你项目的Library目录下。
+```
+$ cp /paht/to/PhalApi-Library/Qiniu ./Library/ -R
+```
+
+至此，便完成了扩展类库的安装，相当简单。  
+
+#### (2) 配置注册
+
+根据不同的扩展类库，其配置和注册的情况不同，有些不需要配置也不需要注册，有些需要配置、注册中的一种，有些可能配置、注册都需要。这里说的配置是指在项目配置文件./Config/app.php内添加对应扩展类库的配置，配置选项的路径通常为：```app.扩展类库名称```。此外，有的扩展类库可能还需要配置数据库配置文件./Config/dbs.php。而注册则是指将对应的扩展类库注册到DI，注册的服务名称通常为扩展类库的小写名称。  
+
+例如，这里七牛云存储扩展所需要的配置是在./Config/app.php配置文件中追加以下扩展配置。  
+```
+// $ vim ./Config/app.php
+<?php
+return array(
+    ... ...
+    /**
+     * 七牛相关配置
+     */
+    'Qiniu' =>  array(
+        // 统一的key
+        'accessKey' => '*****',
+        'secretKey' => '****',
+        // 自定义配置的空间
+        'space_bucket' => '自定义配置的空间',
+        'space_host' => 'http://XXXXX.qiniudn.com',
+    ),
+);
+```
+以上配置值，可结合项目情况相应修改。此七牛云存储扩展目录名称为Qiniu，所在对应的配置路径为：```app.Qiniu```，即对应这样的配置读取：```DI()->config->get('app.Qiniu')```。  
+
+配置好后，便可在初始化文件或者在项目入口文件进行DI注册。  
+```
+// $ vim ./Public/init.php
+DI()->qiniu = new Qiniu_Lite();
+```
+
+注册好后，便可以在项目需要的位置进行调用了。  
+
+#### (3) 使用
+
+不同的扩展类库，其提供的功能不同，所以具体的使用也不尽相同。当使用到某个扩展类库时，可以参考对应的文档说明。有的扩展可能需要调用其内部接口才能实现对应的功能，有些扩展可能提供了直接可用的接口服务。  
+
+例如这里的七牛云存储扩展类库，则是提供了直接可用的接口服务。刷新在线接口列表文档后，可以看到多了```Qiniu_CDN.UploadFile```这一接口服务。  
+![](images/ch-3-qiniu-cdn.jpg)   
+图3-13 七牛云存储扩展类库提供的接口服务  
+
+我们可以编写一个简单的文件上传页面，测试一下。  
+```
+// $ vim ./Public/shop/test_qiniu.html
+<html>
+    <form method="POST" action="/shop/?service=Qiniu_CDN.UploadFile" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <input type="submit">
+    </form>
+</html>
+```
+随后在浏览器访问该页面，并上传一张图片。  
+```
+http://api.phalapi.net/shop/test_qiniu.html
+```
+在未正确配置七牛的相关扩展配置前，文件上传是会失败的，例如这里的。  
+```
+{
+    "ret": 200,
+    "data": {
+        "code": 2,
+        "url": "",
+        "msg": "fail to upload file"
+    },
+    "msg": ""
+}
+```
+正确配置后，即可实现上传文件到七牛云存储。
+
+### 3.7.3 部分扩展类库介绍
+
+上面通过七牛云存储扩展，说明了对于扩展类库的安装、配置注册与使用。下面将继续讲解几个有代表性、常用的扩展类库。一个是PhalApi框架内置的扩展：计划任务Task；一个是自主研发的微型框架：Webchat微信开发；最后一个是基于第三方开源框架开发的PHPMailer邮件发送扩展。还有很多其他优秀的扩展类库，由于边幅有限，这里不一一详细讲解。
+
+#### (1) 计划任务Task内置扩展
+
+#### (2) Webchat微信开发扩展 
+
+#### (3) 基于PHPMailer的邮件发送扩展 
+
+### 3.7.4 从微架构到扩展类库的演进
+
+外观模式
+
+## 3.8 超越HTTP/HTTPS协议
+
 ## 本章小结
 ## 参考资料
