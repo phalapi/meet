@@ -1982,13 +1982,13 @@ http://api.phalapi.net/shop/test_qiniu.html
  + 3、以接口的形式实现计划任务
  + 4、提供统一的crontab调度
 
-下面按安装、使用配置、使用的顺序，依次讲解。 
+下面按安装、使用配置、使用的顺序，依次讲解。最后，我们还会一起来探讨一下此扩展类库的核心设计。   
 
- + **安装**
+ + **Task扩展的安装**
 
 此Task扩展已默认内置在PhalApi框架中，位于./Library/Task，所以不需要安装便可直接使用。  
 
- + **配置**
+ + **Task扩展的配置**
 
 我们需要在./Config/app.php配置文件中，为此Task扩展追加以下配置： 
 ```
@@ -2032,7 +2032,7 @@ http://api.phalapi.net/shop/test_qiniu.html
 ```
 同时，需要将/Library/Task/Data/phalapi_task_mq.sql文件的SQL建表语句导入到你的数据库。你也可以在配置数据库后，使用phalapi-buildsql命令重新生成最新的SQL建表语句再导入数据库。
 
- + **注册**
+ + **Task扩展的注册**
 
 首先，我们需要在入口文件进行对Task的初始化：
 ```
@@ -2211,7 +2211,7 @@ $connector = new Task_Runner_Remote_Connector_Impl();
 $runner = new Task_Runner_Remote($mq, 10, $connector);
 ```
 
- + **使用**
+ + **Task扩展的使用**
 
 Task扩展的使用，又分为两个环节。首先是把待执行的接口服务和相关参数加入到MQ队列，然后再通过统一调度在后台异步执行。  
 
@@ -2383,6 +2383,31 @@ $runner->go('MyTask.DoSth');
   
 另一个则是并发的问题。这里并没有过多地进行加锁策略。而是把这种需要的实现移交给了客户端。因为加锁会使得计划任务更为复杂，而且有时不一定需要使用，如一个计划任务只有一个进程时，也就是单个死循环的脚本进程的情况。  
 
+ + **完备的单元测试体系**
+
+如果我们未能发现代码中隐藏的问题，或者编写的代码不够优雅，我觉得，要么是因为我们根本尚未使用单元测试，要么是即使应用了单元测试但未频繁使用。来稍微看一下此Task扩展所具备的单元测试体系。对于各种MQ队列，以及两种调度方式都是有对应的单元测试的，而且总入口的测试也有。  
+
+```
+$ tree ./Library/Task/Tests/
+./Library/Task/Tests/
+├── MQ
+│   ├── Task_MQ_Array_Test.php
+│   ├── Task_MQ_DB_Test.php
+│   ├── Task_MQ_File_Test.php
+│   ├── Task_MQ_Memcached_Test.php
+│   └── Task_MQ_Redis_Test.php
+├── Runner
+│   ├── Task_Runner_Local_Test.php
+│   └── Task_Runner_Remote_Test.php
+├── Task_Lite_Test.php
+├── Task_Progress_Test.php
+├── Task_Runner_Test.php
+└── test_env.php
+
+2 directories, 11 files
+``` 
+在开发扩展类库，包括其他功能开发时，一个比较好的建议是，坚持测试驱动开发，恰当引入设计模式，并小步重构，不断演进。  
+
  + **客户端的使用**
 
 最后，客户端的使用就很简单了。  
@@ -2393,8 +2418,164 @@ $taskLite = new Task_Lite();
 $taskLite->add('MyTask.DoSth', array('id' => 888));
 ```
 
-
 #### (2) Webchat微信开发扩展 
+
+此扩展可用于微信的服务号、订阅号、企业号等功能开发，在PhalApi框架下简单配置即可开发使用。如同Task扩展一样，我们将继续按安装、使用配置、使用的顺序，依次讲解。最后，也会一起来探讨下此扩展类库的核心设计。  
+
+ + **Webchat的安装**
+
+下载PhalApi-Library扩展库后，将Wechat微信开发扩展目录挂账到你的项目，如：
+```
+cp /path/to/PhalApi-Library/Wechat ./PhalApi/Library/ -R
+```
+  
+到此安装完毕！接下是扩展的配置。
+
+ + **Webchat的配置**
+
+为了让微信扩展能接收来自微信服务器的信息以及返回信息给用户，需要在./Config/app.php配置文件中追加以下扩展配置。  
+```
+    /**
+     * 微信扩展 - 插件注册
+     */
+    'Wechat' => array(
+        'plugins' => array(
+            Wechat_InMessage::MSG_TYPE_TEXT => array('Plugin_Money', 'Plugin_Menu',),
+            Wechat_InMessage::MSG_TYPE_IMAGE => array(),
+            Wechat_InMessage::MSG_TYPE_VOICE => array(),
+            Wechat_InMessage::MSG_TYPE_VIDEO => array(),
+            Wechat_InMessage::MSG_TYPE_LOCATION => array(),
+            Wechat_InMessage::MSG_TYPE_LINK => array(),
+            Wechat_InMessage::MSG_TYPE_EVENT => array(),
+            Wechat_InMessage::MSG_TYPE_DEVICE_EVENT => array(),
+            Wechat_InMessage::MSG_TYPE_DEVICE_TEXT => array(),
+        ),
+    ),
+```
+简单说明一下上面配置的作用，很明显，plugins数组的key对应微信的消息类型，如：文本、位置、语音、图片等；然后是各种消息类型对应的处理的类名，可以有多个，从上到下依次处理。如果觉得配置很多，可以只配置需要用到的消息类型。  
+
+ + **Webchat的注册**
+
+对于微信的开发，我们通常会单独创建一个项目。即使不另建一个单独的项目，也至少需要创建一个单独的访问入口。参考以下入口代码：  
+```
+$ vim ./Public/shop/weixin.php
+<?php
+// echo $_GET['echostr'];
+// die();
+
+if (!isset($GLOBALS['HTTP_RAW_POST_DATA'])) {
+    die('Access denied!');
+}
+
+require_once dirname(__FILE__) . '/../init.php';
+
+//装载你的接口
+DI()->loader->addDirs('Shop');
+
+/** ---------------- 微信轻聊版 ---------------- **/
+
+$robot = new Wechat_Lite('YourTokenHere...', true);
+$rs = $robot->response();
+$rs->output();
+```
+
+由于微信访问的方式比较独特，在这里不再是简单地进行DI注册即可，我们还要切换到微信下的处理和响应。如上面入口文件中的微信响应，而不再是原来默认的接口响应方式。 
+```
+$robot = new Wechat_Lite('YourTokenHere...', true);
+$rs = $robot->response();
+$rs->output();
+```
+
+特别地，当首次接入微信时，需要将开头的两句注释去掉，以便通过微信的验证，即：
+```
+echo $_GET['echostr'];
+die();
+```
+
+ + **Webchat的使用**
+
+这里通过一个模拟的业务场景，来看一下如何使用此Wechat扩展进行微信下的功能开发。假设快要过年了，各大企业都在派红包，这里，我们也模拟一下微信服务号上红包的派发。   
+  
+通常地，当需要添加一个新的微信服务号的功能时，可以为两步走：先开发插件，再注册插件。 
+
+插件的功能开发，视具体业务而定。这里由于是模拟红包派发，而非派发真正的微信红包，所以实现非常简单。只需实现Wechat_Plugin_Text文本消息接口，并返回一条图文信息即可。  
+```
+// $ vim ./Shop/Plugin/Money.php
+<?php
+class Plugin_Money implements Wechat_Plugin_Text {
+
+    public function handleText($inMessage, &$outMessage) {
+        $outMessage = new Wechat_OutMessage_News();
+
+        $item = new Wechat_OutMessage_News_Item();
+        $item->setTitle('让红包飞~')
+            ->setDescription(sprintf('您已领取到一个%d元红包~', rand(1, 100)))
+            ->setPicUrl('http://webtools.qiniudn.com/172906_61c8663a_121026.jpeg')
+            ->setUrl('https://www.phalapi.net/');
+
+        $outMessage->addItem($item);
+    }
+}
+````
+
+开发好插件后，需要在配置文件中添加对哪种消息开启使用此新插件。在/Config/app.php配置文件中追加以下配置。  
+```
+  'Wechat' => array(
+    'plugins' => array(
+        // 在前面追加红包插件，处理顺序由左到右
+        Wechat_InMessage::MSG_TYPE_TEXT => array('Plugin_Money', 'Plugin_Menu', ), 
+        ... ...
+```
+
+最后，在微信公众号中，访问的效果如下。  
+![](images/ch-3-wechat-red-pack.jpg)  
+图3-19 发红包运行效果，消息中的氛围图来自网络  
+
+ + **Webchat的调试**
+
+为了便于进行微信开发的调试，可使用模拟微信请求的脚本send_wechat_text.php，快速模拟发起请求。以下是对上面发红包的模拟请求。  
+```
+$ php ./Library/Wechat/Tests/send_wechat_text.php http://api.phalapi.net/shop/weixin.php demo
+
+<xml>
+<ToUserName><![CDATA[oWNXvjipYqRViMpO8GZwXxE43pUY]]></ToUserName>
+<FromUserName><![CDATA[gh_43235ff1360f]]></FromUserName>
+<CreateTime>1494427723</CreateTime>
+<MsgType><![CDATA[news]]></MsgType>
+<ArticleCount>1</ArticleCount>
+<Articles>
+<item>
+<Title><![CDATA[让红包飞~]]></Title>
+<Description><![CDATA[您已领取到一个9元红包~]]></Description>
+<PicUrl><![CDATA[http://webtools.qiniudn.com/172906_61c8663a_121026.jpeg]]></PicUrl>
+<Url><![CDATA[https://www.phalapi.net/]]></Url>
+</item>
+</Articles>
+<FuncFlag>0</FuncFlag>
+</xml>
+```
+输出的结果，即是对应返回给微信的消息，最终显示的效果与上面的运行效果一样。  
+
+##### 延伸：Wechat扩展的核心设计
+
+Wechat扩展的设计很简单：一进，一出，一机器人。对应的UML静态类结构图如下所示：  
+![](images/ch-3-wechat-uml.jpg)  
+图3-20 Wechat扩展的静态类结构图  
+
+在左边，是各种微信消息类型，如文本消息、事件消息、图片消息等，属于进来的信息。在右边，是响应返回的消息类型，如文本消息、图文消息等，属于出去的信息。而在中间，则是我们的机器人，它会识别所接收的微信消息类型，继而调用对应消息类型的插件，最后返回插件提供的结果。
+
+最后，再稍微来看一下此扩展类库单元测试的编写情况，如下，可以看到对于核心的业务类，也是有对应的单元测试的。  
+```
+$ tree ./Library/Wechat/Tests/
+./Library/Wechat/Tests/
+├── OutMessage
+│   ├── Wechat_OutMessage_Image_Test.php
+│   ├── Wechat_OutMessage_News_Test.php
+│   └── Wechat_OutMessage_Text_Test.php
+├── send_wechat_text.php
+├── Wechat_InMessage_Test.php
+└── Wechat_Robot_Test.php
+```
 
 #### (3) 基于PHPMailer的邮件发送扩展 
 
