@@ -1321,9 +1321,9 @@ $ sudo ln -s /path/to/phalapi-buildcode /usr/bin/phalapi-buildcode
 
 ### 3.6.1 phalapi-buildapp命令
 
- ```phalapi-buildapp```脚本命令，可用于创建一个新的项目，最终效果和在线安装向导类似。其使用说明如下：  
+phalapi-buildapp命令，可用于创建一个新的项目，最终效果和在线安装向导类似。其使用说明如下：  
 ![](images/ch-3-buildapp.png)  
-图3-8 phalapi-buildapp命令的Usage  
+图3-8 phalapi-buildapp命令的使用说明  
   
 其中，
 
@@ -1391,8 +1391,9 @@ Error: Act exists!
 
 ### 3.6.2 phalapi-buildtest命令
 
-当需要对某个类进行单元测试时，可使用```phalapi-buildtest```脚本生成对应的单元测试骨架代码，其使用说明如下：  
+当需要对某个类进行单元测试时，可使用phalapi-buildtest命令生成对应的单元测试骨架代码，其使用说明如下：  
 ![](images/ch-3-buildtest.png)  
+图3-9 phalapi-buildtest命令的使用说明  
   
 其中，
 
@@ -1447,6 +1448,7 @@ class PhpUnderControl_ApiWelcome_Test extends PHPUnit_Framework_TestCase
 ```
 这里，还需要根据情况手动更改一下test_env.php测试环境文件的位置，即去掉注释并改成：  
 ```
+// Tests$ vim ./Api/Api_Welcome_Test.php
 require_once dirname(__FILE__) . '/../test_env.php';
 ```
 
@@ -1494,7 +1496,7 @@ class Domain_Goods {
 cd Shop/Tests/
 Tests$ ../../PhalApi/phalapi-buildtest ../Domain/Goods.php Domain_Goods
 ```
-籍此机会，顺便再来分解下phalapi-buildtest命令的使用过程。对于待测试的类是独立的类时，即不继承于其他类，则可以忽略第三个参数bootstrap，因为这里不需要用到框架的自动加载。同时，在保存生成的骨架代码前，可以先预览一下所生成的代码是否正确。如执行完上面这行命令后，可以看到类似这样的输出。  
+籍此机会，顺便再来分解下phalapi-buildtest命令的使用过程。对于待测试的类是独立的类时，即不继承于其他类，则可以忽略第三个参数bootstrap，因为这里不需要用到框架的自动加载。同时，在保存生成的骨架代码前，可以先预览一下所生成的代码是否正确。在执行完上面这行命令后，可以看到类似这样的输出。  
 ```
 <?php
 /**
@@ -1538,7 +1540,7 @@ Time: 35 ms, Memory: 6.50Mb
 OK (1 test, 1 assertion)
 ```
 
-再回头看一下这里生成的骨架代码，看下最终生成了哪些构建的代码，又生成了发些验证的代码。  
+再回头看一下这里生成的骨架代码，看下最终生成了哪些构建的代码，又生成了哪些验证的代码。  
 ```
 // Tests$ vim ./Domain/Domain_Goods_Test.php
     public function testSnapshot()
@@ -1604,19 +1606,21 @@ class Calculator {
 
 关于单元测试的维护，以及如何针对不同的场景编写单元测试，如何采用测试驱动进行开发，将会在后面深入讲解。  
 
-###(3)生成数据库建表SQL
-当需要创建数据库表时，可以使用```phalapi-buildsqls```脚本结合配置文件dbs.php生成建表SQL，这个工具在创建分表时尤其有用，其使用如下：  
-![](http://7xiz2f.com1.z0.glb.clouddn.com/2_20160422210230.jpg)  
+### 3.6.3 phalapi-buildsqls命令
+
+当需要创建数据库表时，可以使用phalapi-buildsqls脚本命令，再结合数据库配置文件./Config/dbs.php即可生成建表SQL语句。此命令在创建分表时尤其有用，其使用如下：  
+![](images/ch-3-buildtest.png)  
+图3-10 phalapi-buildsqls命令的使用说明  
   
 其中，
 
- + 第一个参数dbs_config：是指向数据库配置文件./Config/dbs.php的路径，可以使用相对路径  
+ + 第一个参数dbs_config：是指向数据库配置文件的路径，如./Config/dbs.php，可以使用相对路径  
  + 第二个参数table：是需要创建sql的表名，每次生成只支持一个  
- + 第三个参数engine：（可选）是指数据库表的引擎，可以是：Innodb或者MyISAM  
+ + 第三个参数engine：可选参数，是指数据库表的引擎，MySQL可以是：Innodb或者MyISAM  
   
-> 温馨提示：需要提前先将建表的SQL语句（除主键id和ext_data字段外）放置到./Data/目录下，文件名为：{表名}.sql。  
+> 温馨提示：需要提前先将建表的SQL语句，排除除主键id和ext_data字段，放置到./Data/目录下，文件名为：{表名}.sql。  
   
-如，我们需要生成10用户user_session表的的建表语句，那么需要添加数据文件./Data/user_session.sql（除主键id和ext_data字段外）：  
+例如，我们需要生成10张user_session用户会话分表的建表语句，那么需要先添加数据文件./Data/user_session.sql，并将除主键id和ext_data字段外的其他建表语句保存到该文件。   
 ```
       `user_id` bigint(20) DEFAULT '0' COMMENT '用户id',
       `token` varchar(64) DEFAULT '' COMMENT '登录token',
@@ -1631,11 +1635,16 @@ class Calculator {
 $ php ./PhalApi/phalapi-buildsqls ./Config/dbs.php user_session
 ```
   
-就会看到生成好的SQL语句了，类似：  
+正常情况下，会看到生成好的SQL语句，类似下面这样的输出。    
 ```
 CREATE TABLE `phalapi_user_session_0` (
       `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-      ... ...
+      `user_id` bigint(20) DEFAULT '0' COMMENT '用户id',
+      `token` varchar(64) DEFAULT '' COMMENT '登录token',
+      `client` varchar(32) DEFAULT '' COMMENT '客户端来源',
+      `times` int(6) DEFAULT '0' COMMENT '登录次数',
+      `login_time` int(11) DEFAULT '0' COMMENT '登录时间',
+      `expires_time` int(11) DEFAULT '0' COMMENT '过期时间',
       PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -1646,100 +1655,151 @@ CREATE TABLE `phalapi_user_session_1` (
       PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-CREATE TABLE `phalapi_user_session_2` (
-      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-      ... ...
-      `ext_data` text COMMENT 'json data here',
-      PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-CREATE TABLE `phalapi_user_session_3` (
-      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-      ... ...
-      `ext_data` text COMMENT 'json data here',
-      PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-CREATE TABLE `phalapi_user_session_4` (
-      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-      ... ...
-      `ext_data` text COMMENT 'json data here',
-      PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-CREATE TABLE `phalapi_user_session_5` (
-      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-      ... ...
-      `ext_data` text COMMENT 'json data here',
-      PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-CREATE TABLE `phalapi_user_session_6` (
-      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-      ... ...
-      `ext_data` text COMMENT 'json data here',
-      PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-CREATE TABLE `phalapi_user_session_7` (
-      ... ...
-      `ext_data` text COMMENT 'json data here',
-      PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-CREATE TABLE `phalapi_user_session_8` (
-      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-      ... ...
-      `ext_data` text COMMENT 'json data here',
-      PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-CREATE TABLE `phalapi_user_session_9` (
-      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-      ... ...
-      `ext_data` text COMMENT 'json data here',
-      PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+CREATE TABLE `phalapi_user_session_2` ... ...
+CREATE TABLE `phalapi_user_session_3` ... ...
+CREATE TABLE `phalapi_user_session_4` ... ...
+CREATE TABLE `phalapi_user_session_5` ... ...
+CREATE TABLE `phalapi_user_session_6` ... ...
+CREATE TABLE `phalapi_user_session_7` ... ...
+CREATE TABLE `phalapi_user_session_8` ... ...
+CREATE TABLE `phalapi_user_session_9` ... ...
 ```
   
-最后，便可把生成好的SQL语句，导入到数据库，进行建表操作。
+最后，便可把生成好的SQL语句，导入到数据库，完成建表的操作。
 
-###(4)生成接口代码 - V1.3.4及以上版本支持
-当需要编写开发一个接口时，可以使用```phalapi-buildcode```脚本生成基本的Api、Domain和Model代码。此脚本不是很强悍的，项目可以根据自己的喜欢使用，或者修改定制自己的模板。其使用如下：  
-![](http://7xiz2f.com1.z0.glb.clouddn.com/4_20160514155143.png)  
-  
-其中，
+### 3.6.4 phalapi-buildcode命令
 
- + 第一个参数app_path：是指项目根目录到你的项目的相对路径  
- + 第二个参数api_path：是需要创建接口的相对项目的相对路径，支持多级目录，可不带.php后缀  
- + 第三个参数author：（可选）你的名字，默认为空
- + 第四个参数overwrite：（可选）是否覆盖已有的代码文件，默认为否
+当需要编写开发一个新的接口服务时，可以使用phalapi-buildcode命令生成基本的Api类、Domain类和Model类的基本代码。此脚本虽然功能不是很强悍，开发人员可以根据项目的情况以及个人喜好使用，或者修改定制自己的模板。其使用，如同上面的命令一样，执行一下便可看到其使用说明如下：  
+
+![](images/ch-3-phalapi-buildcode.jpg)  
+图3-11 phalapi-buildcode命令的使用说明  
+
+其中，  
+
+ + 第一个参数app_path：是指根目录到你项目的相对路径  
+ + 第二个参数api_path：是指待创建接口相对于项目的相对路径，支持多级目录，可不带.php后缀  
+ + 第三个参数author：可选参数，你的名字，默认为空
+ + 第四个参数overwrite：可选参数，是否覆盖已有的代码文件，默认为否
   
-例如，我们要为Demo项目生成一个新的接口文件./AA/BB/CC.php，则可以：  
+例如，我们现在要新增一个针对库存维度的接口服务类Stock，则可以使用这个命令创建配套的一系列代码模板，包括接口类Api_Stock、领域业务类Domain_Stock、数据模型类Model_Stock。在根目录，执行以下命令，其输出如下：  
 ```
-$ cd /path/to/PhalApi
-$ ./PhalApi/phalapi-buildcode Demo AA/BB/CC dogstar
-Start to create folder /mnt/hgfs/F/PHP/PhalApi/PhalApi/../Demo/Api/AA/BB ...
-Start to create folder /mnt/hgfs/F/PHP/PhalApi/PhalApi/../Demo/Domain/AA/BB ...
-Start to create folder /mnt/hgfs/F/PHP/PhalApi/PhalApi/../Demo/Model/AA/BB ...
-Start to create file /mnt/hgfs/F/PHP/PhalApi/PhalApi/../Demo/Api/AA/BB/CC.php ...
-Start to create file /mnt/hgfs/F/PHP/PhalApi/PhalApi/../Demo/Domain/AA/BB/CC.php ...
-Start to create file /mnt/hgfs/F/PHP/PhalApi/PhalApi/../Demo/Model/AA/BB/CC.php ...
+$ ./PhalApi/phalapi-buildcode Shop Stock
+Start to create file /path/to/PhalApi/PhalApi/../Shop/Api/Stock.php ...
+Start to create file /path/to/PhalApi/PhalApi/../Shop/Domain/Stock.php ...
+Start to create file /path/to/PhalApi/PhalApi/../Shop/Model/Stock.php ...
 
-OK! AA/BB/CC has been created successfully!
+OK! Stock has been created successfully!
+```
+
+创建好代码模板后，可以看到多了几个代码文件。生成的代码文件有：    
+```
+$ find ./Shop/ -name "Stock*"
+./Shop/Api/Stock.php
+./Shop/Domain/Stock.php
+./Shop/Model/Stock.php
+```
+
+查看各个文件，可以看到类似下面这样的代码内容。  
+```
+$ cat ./Shop/Api/Stock.php 
+<?php
+/**
+ * Api_Stock
+ * @author  2017-05-10 01:39:33
+ */
+
+class Api_Stock extends PhalApi_Api {
+
+    public function getRules() {
+        return array(
+            'go' => array(
+            ),
+        );
+    }
+
+    /**
+     * go接口
+     * @desc go接口描述
+     * @return int code 状态码，0表示成功，非0表示失败
+     * @return string msg 状态提示
+     */
+    public function go() {
+        $rs = array('code' => 0, 'msg' => '');
+
+        // TODO
+        $domain = new Domain_Stock();
+        $domain->go();
+
+        return $rs;
+    }
+}
+
+$ cat ./Shop/Domain/Stock.php 
+<?php
+/**
+ * Domain_Stock
+ * @author  2017-05-10 01:39:33
+ */
+
+class Domain_Stock {
+
+    public function go() {
+        // TODO
+        $model = new Model_Stock();
+    }
+}
+
+$ cat ./Shop/Model/Stock.php 
+<?php
+/**
+ * Model_Stock
+ * @author  2017-05-10 01:39:33
+ */
+
+class Model_Stock extends PhalApi_Model_NotORM {
+
+    protected function getTableName($id) {
+        return 'stock';
+    }
+}
+```
+随后便可以这代码模板基础上进行快速开发。也可以先尝试访问一下。   
+```
+$ curl "http://api.phalapi.net/shop/?service=Stock.Go"
+{"ret":200,"data":{"code":0,"msg":""},"msg":""}
+```
+
+访问在线接口列表文档，也可以看到实时添加了此新建的接口服务```Stock.Go```。
+![](images/ch-3-stock-go.jpg)
+图3-12 新增的Stock接口类  
+
+同样，接口服务```Stock.Go```对应的在线接口详情文档也是可以实时访问的了。  
+
+若重复创建接口服务时，会提示代码已存在，但可以通过使用第四个参数强制覆盖。  
+```
+$ ./PhalApi/phalapi-buildcode Shop Stock
+/path/to/PhalApi/PhalApi/../Shop/Api/Stock.php exists! Stop to create again!
+```
+
+当待创建的接口服务类有多级目录时，可以使用目录分割符，例如现在需要创建一个支付宝支付相关的接口服务类Pay_Alipay，则可以：  
 
 ```
-  
-可以看到生成的代码有：  
-![](http://7xiz2f.com1.z0.glb.clouddn.com/cc20160514155950.png)   
-    
-访问接口：  
-![](http://7xiz2f.com1.z0.glb.clouddn.com/aa20160514160328.png)  
-    
-最后，在线接口列表，可以看到：  
-![](http://7xiz2f.com1.z0.glb.clouddn.com/bb20160514160158.png)  
+$ ./PhalApi/phalapi-buildcode Shop Pay/Alipay
+Start to create folder /path/to/PhalApi/PhalApi/../Shop/Api/Pay ...
+Start to create folder /path/to/PhalApi/PhalApi/../Shop/Domain/Pay ...
+Start to create folder /path/to/PhalApi/PhalApi/../Shop/Model/Pay ...
+Start to create file /path/to/PhalApi/PhalApi/../Shop/Api/Pay/Alipay.php ...
+Start to create file /path/to/PhalApi/PhalApi/../Shop/Domain/Pay/Alipay.php ...
+Start to create file /path/to/PhalApi/PhalApi/../Shop/Model/Pay/Alipay.php ...
 
-## 3.7 构建更强大的接口服务
+OK! Pay/Alipay has been created successfully!
+```
+注意，参数应该传Pay/Alipay，而不是Pay_Alipay。即下面这样的使用是错误的：  
+```
+$ ./PhalApi/phalapi-buildcode Shop Pay_Alipay
+```
+
+## 3.7 超越HTTP/HTTPS协议
 ## 3.8 可重用的扩展类库
 ## 本章小结
 ## 参考资料
