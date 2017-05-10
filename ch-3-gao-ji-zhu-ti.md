@@ -1007,7 +1007,7 @@ withTimeout(3000);
 rs = request();
 ```
 
-### (2) 封装自己的接口实例
+#### (2) 封装自己的接口实例
 通常，在一个项目里面我们只需要一个接口实例即可，但此语言没默认使用单例模式，是为了大家更好的自由度。基于此，大家在项目开发时，可以再进行封装：提供一个全局的接口查询单例，并组装基本的接口公共查询属性。即分两步：初始化接口实例，以及接口具体的查询操作。  
   
 如第一步先初始化：
@@ -1645,6 +1645,7 @@ CREATE TABLE `phalapi_user_session_0` (
       `times` int(6) DEFAULT '0' COMMENT '登录次数',
       `login_time` int(11) DEFAULT '0' COMMENT '登录时间',
       `expires_time` int(11) DEFAULT '0' COMMENT '过期时间',
+      `ext_data` text COMMENT 'json data here',
       PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -1665,7 +1666,14 @@ CREATE TABLE `phalapi_user_session_8` ... ...
 CREATE TABLE `phalapi_user_session_9` ... ...
 ```
   
-最后，便可把生成好的SQL语句，导入到数据库，完成建表的操作。
+最后，便可把生成好的SQL语句，导入到数据库，完成建表的操作。  
+
+值得注意的是，生成的SQL建表语句默认会带有自增ID主键id和扩展字段ext_data这两个字段。所以保存在./Data目录下的建表语句可省略主键字段，以免重复。    
+```
+      `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+      ... ...
+      `ext_data` text COMMENT 'json data here',
+```
 
 ### 3.6.4 phalapi-buildcode命令
 
