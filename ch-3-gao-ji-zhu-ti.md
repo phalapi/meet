@@ -667,7 +667,7 @@ DI()->loader->addDirs('Shop');
 DI()->response = new Common_Response_XML();
 ```
 
-到这里，大家有没发现一些有趣的规律，或者一种似曾相训的感觉？上面的示例和背后的原理，大家应该很容易理解，当出现Common_Response_XML类未找到时也能很容易明白错误的原因。但当把这些简单的知识点，隐藏于复杂的上下文场景中时，就会容易导致一些令人感到费解的问题。还记得初始化文件./Public/init.php与项目入口文件./Public/shop/index.php吗？还记得为什么有些资源服务需要在初始化文件中注册，而有些则需要在入口文件中注册？为了唤起记忆，这里稍微回顾一下在这两个文件中分别注册的部分资源。  
+到这里，大家有没发现一些有趣的规律，或者一种似曾相识的感觉？上面的示例和背后的原理，大家应该很容易理解，当出现Common_Response_XML类未找到时也能很容易明白错误的原因。但当把这些简单的知识点，隐藏于复杂的上下文场景中时，就会容易导致一些令人感到费解的问题。还记得初始化文件./Public/init.php与项目入口文件./Public/shop/index.php吗？还记得为什么有些资源服务需要在初始化文件中注册，而有些则需要在入口文件中注册？为了唤起记忆，这里稍微回顾一下在这两个文件中分别注册的部分资源。  
 
 初始化文件中的注册：  
 ```
@@ -874,6 +874,35 @@ http://api.phalapi.net/shop/checkApiParams.php?service=Goods.Snapshot
 刷新后，可以看到新增的异常情况说明。  
 ![](images/ch-2-goods-snapshot-docs-exception.png)
 图3-6 添加了异常情况后的效果  
+
+以上获取商品快照信息接口服务的参数规则和注释，完整的代码为：  
+```
+// $ vim ./Shop/Api/Goods.php 
+<?php
+class Api_Goods extends PhalApi_Api {
+
+    public function getRules() {
+        return array(
+            'snapshot' => array(
+                'id' => array('name' => 'id', 'require' => true, 'type' => 'int', 'min' => 1, 'desc' => '商品ID'),
+            ),
+        );
+    }
+
+    /**
+     * 获取商品快照信息
+     * @desc 获取商品基本和常用的信息
+     * @return int      goods_id    商品ID
+     * @return string   goods_name  商品名称 
+     * @return int      goods_price 商品价格
+     * @return string   goods_image 商品图片
+     * @exception 406 签名失败
+     */
+    public function snapshot() {
+        ... ...
+    }
+}
+```
 
 ## 3.5 接口查询语言与SDK包
 
@@ -1314,16 +1343,50 @@ create Act bootstarp ...
 OK! Act has been created successfully!
 ```
 
-最后，可以看到会增加了以下两个目录，一个是放置act项目源代码的目录，另一个是该项目对外访问的目录。  
+最后，可以看到会增加了以下两个目录，一个是放置act项目源代码和单元测试的目录。  
 ```
-./Act
-./Public/act
+$ tree ./Act/
+./Act/
+├── Api
+│   └── Default.php
+├── Common
+├── Domain
+├── Model
+└── Tests
+    ├── Api
+    │   └── Api_Default_Test.php
+    ├── Common
+    ├── Domain
+    ├── Model
+    ├── phpunit.xml
+    └── test_env.php
+
+9 directories, 4 files
+```
+
+另一个是该项目对外访问的目录，包括入口文件、在线文档访问文件。
+```
+$ tree ./Public/act/
+./Public/act/
+├── checkApiParams.php
+├── index.php
+└── listAllApis.php
+
+0 directories, 3 files
 ```
 
 我们还可以试请求一下默认接口服务，发现也是可以正常响应的。  
 ```
 $ curl "http://api.phalapi.net/act/"
 {"ret":200,"data":{"title":"Hello World!","content":"PHPer\u60a8\u597d\uff0c\u6b22\u8fce\u4f7f\u7528PhalApi\uff01","version":"1.4.0","time":1494343386},"msg":""}
+```
+
+最后需要注意的是，在创建新项目时，是以Demo项目为模板进行创建的。所以在使用phalapi-buildapp命令创建新项目时，应确保默认的Demo项目目录和文件未被删除，否则会导致创建异常。默认的Demo项目目录包括放置源代码的目录./Demo和对外可访问的目录./Public/demo。  
+
+另外，当重复创建相同的项目时，会提示项目已存在。如再次创建act项目。  
+```
+$ ./PhalApi/phalapi-buildapp act
+Error: Act exists!
 ```
 
 ### 3.6.2 phalapi-buildtest命令
@@ -1399,7 +1462,147 @@ Time: 7 ms, Memory: 6.50Mb
 OK (2 tests, 0 assertions)
 ```
 
-//TODO 返回类型的验证，默认参数，测试用例。
+phalapi-buildtest命令还有一些很有趣的功能。单元测试可按照构建-执行-验证的模式来编写，所以使用phalapi-buildtest生成的骨架代码，除了会生成执行环节的代码外，还可以生成构建和验证的代码。让我们来看一些具体的示例。  
+
+继续来看一下获取商品快照信息接口服务的领域层的实现，可以看到之前的代码是这样的。  
+```
+// $ vim ./Shop/Domain/Goods.php 
+<?php
+class Domain_Goods {
+
+    public function snapshot($goodsId) {
+        $model = new Model_Goods();
+        $info = $model->getSnapshot($goodsId);
+
+        if (empty($info) || $info['goods_price'] <= 0) {
+            return array();
+        }
+
+        return $info;
+    }
+}
+```
+暂且先不关注这里具体的实现。这里需要一个没有缺省值的```$goodsId```参数，并且返回的是一个数组。phalapi-buildtest命令会自动识别参数列表，以及使用参数缺省值填充，但对于返回值的类型验证，则需要依据函数成员的```@return```注解。为此，我们可以先添加返回类型为数组的注解。  
+```
+    /**
+     * @return array 快照信息
+     */
+    public function snapshot($goodsId) {
+```
+随后，根据phalapi-buildtest命令的使用说明，为Domain_Goods生成单元测试骨架代码，并保存到对应的测试目录。这一次，让我们先进入Shop项目的Tests目录，再使用命令，因为通常情况下使用单元测试时我们都是在此目录下的。可以看到，所在目录位置对phalapi-buildtest命令的使用是不影响的。  
+```
+cd Shop/Tests/
+Tests$ ../../PhalApi/phalapi-buildtest ../Domain/Goods.php Domain_Goods
+```
+籍此机会，顺便再来分解下phalapi-buildtest命令的使用过程。对于待测试的类是独立的类时，即不继承于其他类，则可以忽略第三个参数bootstrap，因为这里不需要用到框架的自动加载。同时，在保存生成的骨架代码前，可以先预览一下所生成的代码是否正确。如执行完上面这行命令后，可以看到类似这样的输出。  
+```
+<?php
+/**
+ * PhpUnderControl_DomainGoods_Test
+ *
+ * 针对 ../Domain/Goods.php Domain_Goods 类的PHPUnit单元测试
+ *
+ * @author: dogstar 20170510
+ */
+
+//require_once dirname(__FILE__) . '/test_env.php';
+
+if (!class_exists('Domain_Goods')) {
+    require dirname(__FILE__) . '/../Domain/Goods.php';
+}
+
+class PhpUnderControl_DomainGoods_Test extends PHPUnit_Framework_TestCase
+{
+    ... ...
+```
+
+预览确认生成的骨架代码没问题后，再重定向保存到测试文件。  
+```
+Tests$ ../../PhalApi/phalapi-buildtest ../Domain/Goods.php Domain_Goods > ./Domain/Domain_Goods_Test.php
+```
+测试文件名为待测试的类名，加上“_Test.php”后缀。保存后，记得再适当调整一下test_env.php文件的引入路径。  
+```
+// Tests$ vim ./Domain/Domain_Goods_Test.php
+require_once dirname(__FILE__) . '/../test_env.php';
+```
+
+然后，执行一下此测试文件，可以看到是可以正常执行并通过测试的。之所以通常，是因为在找不到对应的商品信息时，默认返回空数组。  
+```
+Tests$ phpunit ./Domain/Domain_Goods_Test.php 
+PHPUnit 4.3.4 by Sebastian Bergmann.
+
+.
+
+Time: 35 ms, Memory: 6.50Mb
+
+OK (1 test, 1 assertion)
+```
+
+再回头看一下这里生成的骨架代码，看下最终生成了哪些构建的代码，又生成了发些验证的代码。  
+```
+// Tests$ vim ./Domain/Domain_Goods_Test.php
+    public function testSnapshot()
+    {
+        $goodsId = '';
+
+        $rs = $this->domainGoods->snapshot($goodsId);
+
+        $this->assertTrue(is_array($rs));
+    }
+```
+由于```$goodsId```参数没有缺省值，所以这里给了空字符串，一来不管参数是数值还是字符串都方便填充测试数据，二来不会导致生成的代码语法上出错。在最后，还进行了简单的断言，对```Domain_Goods::snapshot($goodsId)```方法返回值的类型进行了检测，判断是否为期望的数组类型。是不是觉得很有趣？你也可以亲自动手，试下参数带有缺省值的情况。   
+
+phalapi-buildtest命令除了能根据参数列表生成构建代码，根据```@return```注解生成类型断言代码外，还可以根据```@testcase```注解生成对应的测试用例代码。```@testcase```注解的格式是：```@testcase 期望返回结果 参数1,参数2,参数3 ...```，第一个是期望返回的结果，后面是提供给待测试函数的参数列表，用英文逗号分割。目前此方式适合用于参数和返回值是基本类型的场景。由于上面商品快照返回的类型是数组，非基本类型，为了演示```@testcase```注解的效果，让我们来看另一个示例。  
+
+假如我们现在有一个实现了加法运算的简单计算器类，并通过```@testcase```注解添加了两组测试用例，分别是```2 = 1 + 1```和```-5 = -10 + 5```。实现代码和注释如下。  
+```
+<?php
+class Calculator {
+    /**
+     * 求两数和
+     *
+     * @testcase 2 1,1
+     * @testcase -5 -10,5
+     * @return int
+     */
+    public function add($left, $right) {
+        return $left + $right;
+    }
+}
+```
+使用phalapi-buildtest命令生成骨架代码后，可以发现除了下面默认的测试用例外，还根据```@testcase```注解生成了两个测试用例。  
+```
+    public function testAdd()
+    {
+        $left = '';
+        $right = '';
+
+        $rs = $this->calculator->add($left, $right);
+
+        $this->assertTrue(is_int($rs));
+    }
+```
+
+根据```@testcase 2 1,1```注释生成的测试用例是：  
+```
+    public function testAddCase0()
+    {
+        $rs = $this->calculator->add(1,1);
+
+        $this->assertEquals(2, $rs);
+    }
+```
+根据```@testcase -5 -10,5```注释生成的测试用例是： 
+```
+    public function testAddCase1()
+    {
+        $rs = $this->calculator->add(-10,5);
+
+        $this->assertEquals(-5, $rs);
+    }
+```
+
+关于单元测试的维护，以及如何针对不同的场景编写单元测试，如何采用测试驱动进行开发，将会在后面深入讲解。  
 
 ###(3)生成数据库建表SQL
 当需要创建数据库表时，可以使用```phalapi-buildsqls```脚本结合配置文件dbs.php生成建表SQL，这个工具在创建分表时尤其有用，其使用如下：  
