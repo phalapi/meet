@@ -1868,6 +1868,7 @@ Redis|基于PhalApi的Redis拓展|提供更丰富的Redis操作，并且进行�
 SMS|PhalApi-SMS容联云短信服务器扩展|基于容联云通讯，发送短信。
 Smarty|基于PhalApi的Smarty扩展|基于老牌的PHP模版引擎Smarty，提供视图渲染功能。
 Swoole|Swoole扩展|基于swoole，支持的长链接和异步任务实现。
+Task|计划任务扩展|用于后台计划任务的调度。
 ThirdLogin|第三方登录扩展|第三方登录。
 Translate|PhalApi-Translate百度地图翻译扩展|基于百度翻译的翻译。
 UCloud|图片上传扩展|用于图片文件上传。
@@ -1968,11 +1969,202 @@ http://api.phalapi.net/shop/test_qiniu.html
 ```
 正确配置后，即可实现上传文件到七牛云存储。
 
-### 3.7.3 部分扩展类库介绍
+### 3.7.3 常用扩展类库介绍
 
 上面通过七牛云存储扩展，说明了对于扩展类库的安装、配置注册与使用。下面将继续讲解几个有代表性、常用的扩展类库。一个是PhalApi框架内置的扩展：计划任务Task；一个是自主研发的微型框架：Webchat微信开发；最后一个是基于第三方开源框架开发的PHPMailer邮件发送扩展。还有很多其他优秀的扩展类库，由于边幅有限，这里不一一详细讲解。
 
 #### (1) 计划任务Task内置扩展
+
+此扩展类型用于后台计划任务的调度，主要功能点有：
+
+ + 1、提供了Redis/文件/数据库三种MQ队列
+ + 2、提供了本地和远程两种调度方式
+ + 3、以接口的形式实现计划任务
+ + 4、提供统一的crontab调度
+
+ + **安装**
+
+此Task扩展已默认内置在PhalApi框架中，位于./Library/Task，所以不需要安装便可直接使用。  
+
+ + **配置**
+
+我们需要在./Config/app.php配置文件中，为此Task扩展追加以下配置： 
+```
+    /**
+     * 计划任务配置
+     */
+    'Task' => array(
+        // MQ队列设置，可根据使用需要配置
+        'mq' => array(
+            'file' => array(
+                'path' => API_ROOT . '/Runtime',
+                'prefix' => 'shop_task',
+            ),
+        ),
+
+        // Runner设置，如果使用远程调度方式，请加此配置
+        'runner' => array(
+            'remote' => array(
+                'host' => 'http://api.phalapi.net/shop/',
+                'timeoutMS' => 3000,
+            ),
+        ),
+    ),
+```
+以上内容看情况需要而配置，如这里使用的是文件队列，你也可以根据需要使用Redis或数据库队列或其它。  
+
+当使用数据库MQ列队时，还需要将以下数据库的配置追加到./Config/dbs.php中的tables配置项。  
+```
+    'tables' => array(
+    	... ...
+        // 10张表，可根据需要，自行调整表前缀、主键名和路由
+        'task_mq' => array(
+            'prefix' => 'phalapi_',
+            'key' => 'id',
+            'map' => array(
+                array('db' => 'db_demo'),
+                array('start' => 0, 'end' => 9, 'db' => 'db_demo'),
+            ),
+        ),
+    )
+```
+同时，需要将/Library/Task/Data/phalapi_task_mq.sql文件的SQL建表语句导入到你的数据库。你也可以在配置数据库后，使用phalapi-buildsql命令重新生成最新的SQL建表语句再导入数据库。
+
+ + **注册**
+
+首先，我们需要在入口文件进行对Task的初始化：
+```
+// 可以选择你需要的MQ
+$mq = new Task_MQ_Redis();  
+DI()->taskLite = new Task_Lite($mq);
+```
+
+上面示例使用的是Redis队列，而Redis的MQ队列需要以下配置。 
+```
+    'Task' => array(
+        'mq' => array(
+            'redis' => array(
+                'host' => '127.0.0.1',
+                'port' => 6379,
+                'prefix' => 'phalapi_task',
+                'auth' => '',
+            ),
+        ),
+    ),
+```
+
+其中：  
+
+表3-5 Redis的MQ队列配置说明  
+
+选项|是否必须|默认值|说明
+---|---|---|---
+host|否|127.0.0.1|redis的HOST
+port|否|6379|redis的端口
+prefix|否|phalapi_task|key的前缀
+auth|否||redis的验证，不为空时执行验证
+
+可以这样创建Redis MQ队列：
+```
+// 方法一：使用app.Task.mq.redis配置
+$mq = new Task_MQ_Redis();
+
+// 方法二：外部依赖注入
+$redisCache = new PhalApi_Cache_Redis(array('host' => '127.0.0.1'));
+$mq = new Task_MQ_Redis($redisCache);
+```
+
+Memcached/Memcache的MQ队列，通常队列条目大小不能超过1M，有效期为29天。当需要使用此MQ列列时，需要的配置为：
+```
+    'Task' => array(
+        'mq' => array(
+            'mc' => array(
+                'host' => '127.0.0.1',
+                'port' => 11211,
+            ),
+        ),
+    ),
+```
+
+其中：  
+
+表3-6 Memcached/Memcache的MQ队列配置说明    
+
+选项|是否必须|默认值|说明
+---|---|---|---
+host|否|127.0.0.1|MC的host
+port|否|11211|MC端口
+  
+可以这样创建文件MQ队列：
+```
+// 方法一：使用app.Task.mq.mc配置
+$mq = new Task_MQ_Memcached();
+
+// 方法二：外部依赖注入
+$mc = new PhalApi_Cache_Memcached(array('host' => '127.0.0.1', 'port' => 11211));
+$mq = new Task_MQ_File($mc);
+```
+
+也可以使用文件MQ队列，但通常不能共享，队列大小不限制，有效期为一年。文件MQ需要的配置为：  
+```
+    'Task' => array(
+        'mq' => array(
+            'file' => array(
+                'path' => API_ROOT . '/Runtime',
+                'prefix' => 'phalapi_task',
+            ),
+        ),
+    ),
+```
+
+其中：  
+  
+表3-7 文件MQ队列配置说明  
+
+选项|是否必须|默认值|说明
+---|---|---|---
+path|否|API_ROOT/Runtime|缓存的文件目录
+prefix|否|phalapi_task|key的前缀
+  
+可以这样创建文件MQ队列：
+```
+// 方法一：使用app.Task.mq.file配置
+$mq = new Task_MQ_File();
+
+// 方法二：外部依赖注入
+$fileCache = new PhalApi_Cache_File(array('path' => '/tmp/cache'));
+$mq = new Task_MQ_File($fileCache);
+```
+
+持久化的MQ队列，还可以使用数据库。数据库MQ队列需要的配置为：
+```
+    'tables' => array(
+        // 10张表，可根据需要，自行调整表前缀、主键名和路由
+        'task_mq' => array(
+            'prefix' => 'phalapi_',
+            'key' => 'id',
+            'map' => array(
+                array('db' => 'db_demo'),
+                array('start' => 0, 'end' => 9, 'db' => 'db_demo'),
+            ),
+        ),
+    )
+```
+与上面的配置不同，这里是指数据库的配置./Config/dbs.php，而不是项目的配置./Config/app.php。  
+  
+可以这样创建数据库MQ队列：
+```
+$mq = new Task_MQ_DB();
+```  
+
+最后，还可以使用数组MQ队列。顾明思义，组MQ队列是将MQ存放在PHP的数组里面，用于单元测试或者是一次性、临时性的计划任务调度。
+  
+可以这样创建数据库MQ队列：
+```
+$mq = new Task_MQ_Array();
+```
+
+ + **使用**
 
 #### (2) Webchat微信开发扩展 
 
