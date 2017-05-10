@@ -1708,6 +1708,8 @@ $ find ./Shop/ -name "Stock*"
 ```
 
 查看各个文件，可以看到类似下面这样的代码内容。  
+
+生成的接口类文件，默认带有go()函数成员，并简单调用领域业务类。  
 ```
 $ cat ./Shop/Api/Stock.php 
 <?php
@@ -1741,7 +1743,10 @@ class Api_Stock extends PhalApi_Api {
         return $rs;
     }
 }
+```
 
+生成的领域业务类，同样带有go()函数成员，并简单调用数据模型类。
+```
 $ cat ./Shop/Domain/Stock.php 
 <?php
 /**
@@ -1756,7 +1761,10 @@ class Domain_Stock {
         $model = new Model_Stock();
     }
 }
+```
 
+生成的数据模型类，默认情况下继承于PhalApi_Model_NotORM类。  
+```
 $ cat ./Shop/Model/Stock.php 
 <?php
 /**
@@ -1771,6 +1779,7 @@ class Model_Stock extends PhalApi_Model_NotORM {
     }
 }
 ```
+
 随后便可以这代码模板基础上进行快速开发。也可以先尝试访问一下。   
 ```
 $ curl "http://api.phalapi.net/shop/?service=Stock.Go"
