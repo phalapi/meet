@@ -2898,13 +2898,158 @@ $ curl -X PUT "http://api.phalapi.net/shop/comment/1"
     "msg": "快速路由的HTTP请求方法错误，应该为：GET/POST/DELETE"
 }
 ```
-可以看到，当请求的方法未匹配时，会得到ret = 405的错误返回，并且在提示信息中会注明所允许的访问方式。 
+可以看到，当请求的方法未匹配时，会得到ret = 405的错误返回，并且在提示信息中会注明所允许的访问方式。  
+
+即使不使用FastRoute扩展，你也可以使用其他路由类库，或者自定制RESTful映射规则。这里关键的内容是，将RESTful的路由规则，最终转换成原来对应的service访问方式。此外，使用FastRoute扩展，同时会保留原来HTTP/HTTPS协议通过service指定接口服务的访问方式。  
 
 ### 3.8.2 使用PHPRPC协议
+
+在需要使用phprpc协议对外提供接口服务时，可以快速利用PHPRPC扩展类库。你会发现，服务端接口服务已有的代码不需要做任何改动，只需要增加此扩展包和添加一个新入口便可完美切换到phprpc协议。
+
+我们一直都建议在项目中恰当地使用设计模式，以便让代码更优雅。要产出优雅的代码，需要在合适的场景采用合适的设计模式，而不是为了“显学”而生硬套用。而更高层的设计原则和工程思想作为指导，能让设计模式发挥更大的作用。比如在设计PhalApi时，我们引入并应用了很多设计原则，有单一职责原则、开放-封闭原则等。因此，在PHPRPC扩展这里我们可以在phprpc的基础上，利用代理模式优雅地扩展实现phpcpr协议。  
+
+> 参考：phprpc官网：http://www.phprpc.org/  
+
+下面将来介绍如何使用PHPRPC扩展类库，通过phprpc协议对外提供接口服务。 
+
+#### (1) PHPRPC扩展的安装
+
+PHPRPC扩展的安装和其他扩展一样，从PhalApi-Library扩展库中拷贝PHPRPC到你项目的Library目录下即可。  
+```
+cp /path/to/PhalApi-Library/PHPRPC/ ./PhalApi/Library/ -R
+```
+到此PHPRPC扩展安装完毕！
+
+
+#### (2) PHPRPC扩展的入口
+
+和其他扩展不同，PHPRPC扩展不需要配置，也不需要注册DI服务，但需要单独提供一个使用phprpc协议的访问入口。主要区别是，把原来默认的响应处理```PhalApi::reponse()```改成PHPRPC扩展的响应处理```PHPRPC_Lite::response()```。PHPRPC扩展的入口可参考以下实现。  
+```
+// $ vim ./Public/shop/phprpc.php
+<?php
+require_once dirname(__FILE__) . '/../init.php';
+
+// 装载你的接口
+DI()->loader->addDirs('Shop');
+ 
+$server = new PHPRPC_Lite();
+$server->response();
+```
+和原来的入口文件一样，先加载初始化文件，再装载项目目录，最后使用PHPRPC扩展进行响应。如有其他的入口服务，可在相应的位置进行补充。  
+
+至此，phprpc协议已准备就绪，可以开始使用了。
+
+#### (3) 通过phprpc协议访问接口服务
+
+以Shop项目中的Hello World接口服务```?service=Welcome.Say```为例，演示通过刚才配置的phprpc协议访问此接口服务。  
+
+对于提供了phprpc协议的访问入口，如果再使用HTTP/HTTPS协议访问，会看到类似这样的返回。这表示应该更改成通过phprpc协议的访问方式。  
+```
+$ curl "http://api.phalapi.net/shop/phprpc.php?service=Welcome.Say"
+phprpc_functions="YToxOntpOjA7czo4OiJyZXNwb25zZSI7fQ==";
+```
+
+在客户端，根据开发语言可以选择PHPRPC提供的对应的SDK包。这里以PHP版客户端为例，演示如何通过phprpc协议访问接口服务。  
+```
+<?php
+require_once '/path/tophprpc/phprpc_client.php';
+
+$client = new PHPRPC_Client();
+$client->setProxy(NULL);
+$client->setKeyLength(1000);
+$client->setEncryptMode(3);
+$client->setCharset('UTF-8');
+$client->setTimeout(10);
+
+// 设置phprpc入口链接
+$client->useService('http://api.phalapi.net/shop/phprpc.php');
+
+// 准备请求的参数
+$params = array('service' => 'Welcome.Say');
+
+// 请求
+$rs = $client->response(json_encode($params));
+var_dump($rs);
+```
+注意，最后传递的参数，需要进行一次JSON编码后再传递，以便把全部的参数作为数据包一起发送。  
+
+成功请求的情况下，可以看到这样的输出：  
+```
+array(3) {
+  ["ret"]=>
+  int(200)
+  ["data"]=>
+  string(11) "Hello World"
+  ["msg"]=>
+  string(0) ""
+}
+```
+失败的情况下，则会返回一个PHPRPC_Error实例。类如当入口链接错误时，返回：  
+```
+object(PHPRPC_Error)#2 (2) {
+  ["Number"]=>
+  int(1)
+  ["Message"]=>
+  string(22) "Illegal PHPRPC server."
+}
+```
+
+为了方便进行phprpc协议下接口服务调用的调试，PHPRPC扩展中提供了一个脚本，可用于通过phprpc协议发起接口服务的请求。例如，上面对Hello World接口服务的请求，可以：  
+```
+$ ./Library/PHPRPC/check.php "http://api.phalapi.net/shop/phprpc.php" "service=Welcome.Say"
+array(3) {
+  ["ret"]=>
+  int(200)
+  ["data"]=>
+  string(11) "Hello World"
+  ["msg"]=>
+  string(0) ""
+}
+```
+输出结果和上面手动编写客户端代码调用的结果一样。  
+
+#### (4) 对客户端的调整
+
+虽然服务端不需要作出太多的改动，但对于客户端来说，需要进行三方面的调整，才能通过phprpc协议调用接口服务，传递参数以及获取返回的结果。  
+
+现分说如下。
+
+ + 调用方式的改变  
+
+首先是客户端调用方式的改变，但值得开心的是，phprpc对很多语言都有对应的SDK民支持。具体可以可参考phprpc官网。  
+
+ + POST参数传递方式的改变
+
+其次是对POST参数传递的改变。考虑到phprpc协议中对POST的数据有一定的复杂性，这里统一作了简化。在前面的示例中也进行了说明，即把全部的参数最后JSON编码传递。对应服务端的解释如下：  
+```
+    public function response($params = NULL) {
+        $paramsArr = json_decode($params, TRUE);
+        if ($paramsArr !== FALSE) {
+            DI()->request = new PhalApi_Request(array_merge($_GET, $paramsArr));
+        }
+        ... ...
+```
+特此约定：通过第一个参数用JSON格式来传递全部原来需要POST的数据。当POST的数据和GET的数据冲突时，以POST为准。   
+
+相应地，当需要传递POST参数时，客户需要这样调整（如PHP下）：
+```
+$client->response(json_encode($params)));
+```
+若无此POST参数，则可以忽略不传。
+
+ + 返回结果格式的改变
+
+最后，就是返回结果格式的改变。
+
+在phprpc协议下，因为可以更轻松地获取接口返回的源数据，所以这里也同样不再通过字符串流式的序列返回，如原来的JSON或XML格式，而是直接返回接口的源数据 。如前面示例中，返回的是数组类型。这一点，需要特别注意。  
 
 ### 3.8.3 利用SOAP搭建Web Services
 
 ### 3.8.4 创建命令行CLI项目
+
+### 3.8.5 小结
+
+//TODO 各种协议、方案的对比。
 
 ## 本章小结
 ## 参考资料
