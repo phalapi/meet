@@ -2848,7 +2848,46 @@ DI()->fastRoute->dispatch();
 
 #### (4) FastRoute扩展的使用
 
-最后，我们可以来体验一下FastRoute扩展所带来的RESTful访问效果。
+最后，我们可以来体验一下FastRoute扩展所带来的RESTful访问效果。在完成前面的安装、配置、注册和具体的（模拟）业务功能开发的准备工作后，客户端便可以按照新的RESTful风格对接口服务进行访问了。    
+
+例如，使用GET方式访问获取评论接口服务，并获取id为1的评论内容。  
+```
+$ curl "http://api.phalapi.net/shop/comment/1"
+
+{
+  "ret": 200,
+  "data": {
+    "id": 1,
+    "content": "模拟获取评论内容"
+  },
+  "msg": ""
+}
+```
+
+使用POST方式访问评论接口服务，并添加内容为“test”的评论。  
+```
+$ curl -d "content=test" "http://api.phalapi.net/shop/comment"
+
+{
+    "ret": 200,
+    "data": {
+        "id": 1,
+        "content": "模拟添加：test"
+    },
+    "msg": ""
+}
+```
+
+使用PUT方式访问更新评论接口服务，并把id为1的评论内容更新为“新的评论内容”。  
+```
+
+```
+
+使用DELETE方式访问删除评论接口服务，并删除id为1的评论。  
+```
+$ curl  -X DELETE "http://api.phalapi.net/shop/comment/1"
+{"ret":200,"data":{"id":1},"msg":""}
+```
 
 ### 3.8.2 使用PHPRPC协议
 

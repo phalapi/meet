@@ -75,7 +75,7 @@ return array(
         'routes' => array(
             array('GET', '/shop/comment/{id:\d+}', 'Comment.Get'),
             array('POST', '/shop/comment', 'Comment.Add'),
-            array('PUT', '/shop/comment/{id:\d+}', 'Comment.Update'),
+            array('POST', '/shop/comment/{id:\d+}', 'Comment.Update'),
             array('DELETE', '/shop/comment/{id:\d+}', 'Comment.Delete'),
             //array('GET', '/user/get_base_info/{user_id:\d+}', 'User.GetBaseInfo'),
             //array('GET', '/user/get_multi_base_info/{user_ids:[0-9,]+}', 'User.GetMultiBaseInfo'),
