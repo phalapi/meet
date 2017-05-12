@@ -2686,7 +2686,7 @@ cp /path/to/PhalApi-Library/FastRoute/ ./PhalApi/Library/ -R
 ```
 其中，routes数组中的每一个数组表示一条路由配置，第一个参数是允许的HTTP请求方法，可以为：GET/POST/HEAD/DELETE等；第二个参数是路由的正则表达式；第三个参数是对应的接口服务名称，即原来的servcie参数。如上面示例中，配置后访问```/user/get_base_info/1```等效于原来的```/?service=User.GetBaseInfo&user_id=1```。  
 
-这里为了方便理解，假设前面的Shop商城项目中，现在需要添加评论功能，相应地需要提供评论接口服务。显然，评论功能需要发表评论、更新评论、删除评论以及获取评论这些基本功能。对应地，我们可以创建一个新的接口类Api_Comment，并添加对应的成员函数。  
+这里为了方便理解，假设前面的Shop商城项目中，现在需要添加评论功能，相应地需要提供评论接口服务。显然，评论功能需要发表评论、更新评论、删除评论以及获取评论这些基本功能。对应地，我们可以创建一个新的接口类Api_Comment，并添加对应的成员函数。为简化业务功能，突出RESTful API的构建，假设这里的评论功能很简单，只有评论ID和评论内容这两项。同时，模拟各接口的实现。实现方式很简单，获取相应的参数并简单返回，或者使用一些固定的测试数据。  
 ```
 // $ vim ./Shop/Api/Comment.php
 <?php
@@ -2696,29 +2696,34 @@ class Api_Comment extends PhalApi_Api {
      * 获取评论
      */
     public function get() {
+        return array('id' => $this->id, 'content' => '模拟获取：评论内容');
     }
 
     /**
-     * 添加评论||
+     * 添加评论
      */
     public function add() {
+        return array('id' => 1, 'content' => '模拟添加：' . $this->content);
     }
 
     /**
      * 更新评论
      */
     public function update() {
+        return array('id' => $this->id, 'content' => '模拟更新：' . $this->content);
     }
 
     /**
      * 删除评论
      */
     public function delete() {
+        return array('id' => $this->id, 'content' => '模拟删除：评论内容');
     }
 }
 ```
+注意，这里只是为了演示而模拟了返回数据。实际项目中，这些返回字段需根据实际情况而定。 
 
-为简化业务功能，突出RESTful API的构建，假设这里的评论功能很简单，只有评论ID和评论内容这两项。上面这四个接口服务所需要的参数配置分别如下：  
+上面这四个接口服务所需要的参数配置分别如下：  
 ```
 class Api_Comment extends PhalApi_Api {
 
@@ -2742,25 +2747,6 @@ class Api_Comment extends PhalApi_Api {
 
 ```
 
-同时，模拟各接口的实现。实现方式很简单，获取相应的参数并简单返回，或者使用一些固定的测试数据。  
-```
-    public function get() {
-        return array('id' => $this->id, 'content' => '模拟获取：评论内容');
-    }
-
-    public function add() {
-        return array('id' => 1, 'content' => '模拟添加：' . $this->content);
-    }
-
-    public function update() {
-        return array('id' => $this->id, 'content' => '模拟更新：' . $this->content);
-    }
-
-    public function delete() {
-        return array('id' => $this->id, 'content' => '模拟删除：评论内容');
-    }
-```
-
 对于此评论功能，最终希望构建的RESTful API和原来访问方式的映射关系如下：  
 
 表3-9 评论RESTful API的映射关系
@@ -2778,13 +2764,6 @@ class Api_Comment extends PhalApi_Api {
      * 扩展类库 - 快速路由配置
      */
     'FastRoute' => array(
-         /**
-          * 格式：array($method, $routePattern, $handler)
-          *
-          * @param string/array $method 允许的HTTP请求方烤鸡，可以为：GET/POST/HEAD/DELETE 等
-          * @param string $routePattern 路由的正则表达式
-          * @param string $handler 对应PhalApi中接口服务名称，即：?service=$handler
-          */
         'routes' => array(
             array('GET', '/shop/comment/{id:\d+}', 'Comment.Get'),
             array('POST', '/shop/comment', 'Comment.Add'),
@@ -2844,6 +2823,7 @@ DI()->fastRoute = new FastRoute_Lite();
 DI()->fastRoute->dispatch();
 
 /** ---------------- 响应接口请求 ---------------- **/
+... ...
 ```
 
 #### (4) FastRoute扩展的使用
@@ -2905,6 +2885,8 @@ $ curl  -X DELETE "http://api.phalapi.net/shop/comment/1"
     "msg": ""
 }
 ```
+
+一切运行良好！在不修改已有接口服务的前提下，通过新增FastRoute扩展，我们就可以轻松完成了RESTful API的构建工作。是不是觉得很有趣？ 
 
 ### 3.8.2 使用PHPRPC协议
 
