@@ -2797,7 +2797,7 @@ http://api.phalapi.net/shop/index.php/comment
 
 如果到了这一步，Nginx服务器还提供404，则需要注意是否配置了index.php处理的方式。例如404时出现这样的error.log错误日记：  
 ```
-2017/05/12 08:54:58 [error] 2300#0: *9 open() "/path/to/PhalApi/Public/shop/index.php/comment" failed (20: Not a directory), client: 192.168.0.101, server: api.phalapi.net, request: "GET /shop/comment HTTP/1.1", host: "api.phalapi.net"
+[error] 2300#0: *9 open() "/path/to/PhalApi/Public/shop/index.php/comment" failed (20: Not a directory), request: "GET /shop/comment HTTP/1.1", host: "api.phalapi.net"
 ```
 这表示，rewrite规则已生效，但未交由/shop/index.php处理，此时可再添加这样的配置。  
 ```
@@ -2808,7 +2808,7 @@ http://api.phalapi.net/shop/index.php/comment
 ```
 根据Nginx的说明，try_files会先判断$uri这个文件是否存在，再判断$uri/这个目录是否存在，最后重定向到$uri/index.php这个文件。至此，再重新访问上面的URL，便可正常响应了。  
 ```
-192.168.0.101 - - [12/May/2017:09:24:17 +0800] "GET /shop/comment/1 HTTP/1.1" 200 108 "-" "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:53.0) Gecko/20100101 Firefox/53.0"
+"GET /shop/comment/1 HTTP/1.1" 200
 ```
 
 还有一点补充说明一下。由于本书使用的环境是PHP 5.3.10，而FastRoute需要PHP 5.4.0及以上版本。所以针对这一节中FastRoute的演示，我们专门部署了PHP 7.0.0RC环境。其他章节若无特殊说明，仍然使用本书约定的版本PHP 5.3.10。
@@ -2874,7 +2874,7 @@ $ curl -X POST -d "content=新的评论内容" "http://api.phalapi.net/shop/comm
 
 使用DELETE方式访问删除评论接口服务，并删除id为1的评论。  
 ```
-$ curl  -X DELETE "http://api.phalapi.net/shop/comment/1"
+$ curl -X DELETE "http://api.phalapi.net/shop/comment/1"
 
 {
     "ret": 200,
@@ -2886,7 +2886,19 @@ $ curl  -X DELETE "http://api.phalapi.net/shop/comment/1"
 }
 ```
 
-一切运行良好！在不修改已有接口服务的前提下，通过新增FastRoute扩展，我们就可以轻松完成了RESTful API的构建工作。是不是觉得很有趣？ 
+一切运行良好！在不修改已有接口服务的前提下，通过新增FastRoute扩展，我们就可以轻松完成了RESTful API的构建工作。是不是觉得很有趣？  
+
+如果请求的方法未在FastRoute路由规则配置时，会是怎样呢？我们可以尝试一下使用PUT方式访问上面的服务，例如：  
+```
+$ curl -X PUT "http://api.phalapi.net/shop/comment/1"  
+
+{
+    "ret": 405,
+    "data": [],
+    "msg": "快速路由的HTTP请求方法错误，应该为：GET/POST/DELETE"
+}
+```
+可以看到，当请求的方法未匹配时，会得到ret = 405的错误返回，并且在提示信息中会注明所允许的访问方式。 
 
 ### 3.8.2 使用PHPRPC协议
 
