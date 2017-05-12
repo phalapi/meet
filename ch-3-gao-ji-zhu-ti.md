@@ -2895,10 +2895,12 @@ $ curl -X POST -d "content=新的评论内容" "http://api.phalapi.net/shop/comm
 使用DELETE方式访问删除评论接口服务，并删除id为1的评论。  
 ```
 $ curl  -X DELETE "http://api.phalapi.net/shop/comment/1"
+
 {
     "ret": 200,
     "data": {
-        "id": 1
+        "id": 1,
+        "content": "模拟删除：评论内容"
     },
     "msg": ""
 }
