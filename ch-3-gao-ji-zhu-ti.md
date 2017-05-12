@@ -2968,8 +2968,16 @@ $client->useService('http://api.phalapi.net/shop/phprpc.php');
 $params = array('service' => 'Welcome.Say');
 
 // 请求
-$rs = $client->response(json_encode($params));
-var_dump($rs);
+$data = $client->response(json_encode($params));
+var_dump($data);
+
+if ($data instanceof PHPRPC_Error) {
+	// TODO: 异常处理
+	var_dump($data);
+}
+
+// 处理返回的数据
+var_dump($data);
 ```
 注意，最后传递的参数，需要进行一次JSON编码后再传递，以便把全部的参数作为数据包一起发送。  
 
@@ -3044,6 +3052,92 @@ $client->response(json_encode($params)));
 在phprpc协议下，因为可以更轻松地获取接口返回的源数据，所以这里也同样不再通过字符串流式的序列返回，如原来的JSON或XML格式，而是直接返回接口的源数据 。如前面示例中，返回的是数组类型。这一点，需要特别注意。  
 
 ### 3.8.3 利用SOAP搭建Web Services
+
+当需要使用SOAP时，需要在配置PHP时，通过```--enable-soap```参数开启SOAP。 
+
+#### (1) SOAP扩展的安装
+
+从PhalApi-Library扩展库中的SOAP目录拷贝到你项目的Library目录下即可。  
+```
+cp /path/to/PhalApi-Library/SOAP/ ./PhalApi/Library/ -R
+```
+到此SOAP扩展安装完毕！  
+
+#### (2) SOAP扩展的配置
+
+需要将以下扩展配置添加到项目配置文件./Config/app.php。  
+```
+    /**
+     * 扩展类库 - SOAP配置
+     * @see SoapServer::__construct ( mixed $wsdl [, array $options ] )
+     */
+    'SOAP' => array(
+        'wsdl' => NULL,
+        'options' => array(
+            'uri' => 'http://api.phalapi.net/shop/soap.php',
+            'port' => NULL,
+        ),
+    ),
+```
+其中，wsdl配置对应SoapServer构造函数的第一个参数，options配置则对应第二个参数，其中的uri须与下面的入口文件路径对应。  
+
+#### (3) SOAP服务端访问入口 
+
+SOAP扩展不需要注册DI服务，但需要单独实现访问入口，参考以下实现。
+```
+// $ vim ./Public/shop/soap.php 
+<?php
+require_once dirname(__FILE__) . '/../init.php';
+
+// 装载你的接口
+DI()->loader->addDirs('Shop');
+
+$server = new SOAP_Lite();
+$server->response();
+```
+
+至此，SOAP的服务端已搭建完毕。接下来，客户端便可通过SOAP进行访问了。
+
+#### (4) SOAP客户端调用
+
+SOAP客户端的使用，需要使用SoapClient类，其使用示例如下所示。
+```
+$url = 'http://api.phalapi.net/shop/soap.php';
+$params = array('servcie' => 'Welcome.Say');
+
+try {
+    $client = new SoapClient(null,
+        array(
+            'location' => $url,
+            'uri'      => $url,
+        )
+    );
+
+    $data = $client->__soapCall('response', array(json_encode($params)));
+
+    //处理返回的数据。。。
+    var_dump($data);
+}catch(SoapFault $fault){
+    echo "Error: ".$fault->faultcode.", string: ".$fault->faultstring;
+}
+```
+注意，客户端传递的接口参数，最后需要JSON编码后再传递。  
+
+#### (5) SOAP调试脚本
+
+SOAP扩展提供了一个可以发起SOAP访问的脚本，使用示例如下。  
+```
+$ ./Library/SOAP/check.php http://api.phalapi.net/shop/soap.php "service=Welcome.Say"
+array(3) {
+  ["ret"]=>
+  int(200)
+  ["data"]=>
+  string(11) "Hello World"
+  ["msg"]=>
+  string(0) ""
+}
+```
+
 
 ### 3.8.4 创建命令行CLI项目
 
@@ -3142,7 +3236,7 @@ class Api_Comment extends PhalApi_Api {
                 'content' => array('name' => 'content', 'require' => true, 'desc' => '待更新的评论内容'),
                 'author' => array('name' => 'author', 'default' => 'nobody', 'desc' => '评论作者'),
             ),
-
+			... ...		
 ```    
 再次查看帮助，可以看到相应更新了。  
 ```
@@ -3160,6 +3254,11 @@ Options:
 ### 3.8.5 小结
 
 //TODO 各种协议、方案的对比。
+
+保留原来的访问
+对客户端的影响
+接口参数传递
+结果返回
 
 ## 本章小结
 ## 参考资料

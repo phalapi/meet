@@ -81,4 +81,16 @@ return array(
             //array('GET', '/user/get_multi_base_info/{user_ids:[0-9,]+}', 'User.GetMultiBaseInfo'),
         ),
     ),
+
+    /**
+     * 扩展类库 - SOAP配置
+     * @see SoapServer::__construct ( mixed $wsdl [, array $options ] )
+     */
+    'SOAP' => array(
+        'wsdl' => NULL,
+        'options' => array(
+            'uri' => 'http://api.phalapi.net/shop/soap.php',
+            'port' => NULL,
+        ),
+    ),
 );

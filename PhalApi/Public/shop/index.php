@@ -24,8 +24,8 @@ $config = array('domain' => '.phalapi.net', 'crypt' => new Common_Crypt_Base64()
 DI()->cookie = new PhalApi_Cookie_Multi($config);
 
 // 显式初始化，并调用分发
-DI()->fastRoute = new FastRoute_Lite();
-DI()->fastRoute->dispatch();
+//DI()->fastRoute = new FastRoute_Lite();
+//DI()->fastRoute->dispatch();
 
 /** ---------------- 响应接口请求 ---------------- **/
 
