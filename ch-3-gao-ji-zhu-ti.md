@@ -2654,7 +2654,7 @@ PhalApi默认使用的是HTTP/HTTPS协议，正如我们所介绍的那样，Pha
 
 RESTful是一种架构风格，这里不过多介绍什么是RESTful API，而重点在于介绍如何使用FastRoute扩展快速构建RESTful API。
 
-#### (1) FastRoute扩展的安装、配置注册与使用
+#### (1) FastRoute扩展的安装
 
 FastRoute扩展是基于开源类库FastRoute开发实现的，需要PHP 5.4.0及以上版本，通过配置实现自定义路由配置可轻松映射到PhalApi中的service接口服务。 
 > 参考：FastRoute - Fast request router for PHP：https://github.com/nikic/FastRoute
@@ -2664,7 +2664,27 @@ FastRoute扩展是基于开源类库FastRoute开发实现的，需要PHP 5.4.0�
 cp /path/to/PhalApi-Library/FastRoute/ ./PhalApi/Library/ -R
 ```
 
+#### (2) FastRoute扩展的配置
+
 随后，在项目配置文件./Config/app.php中追加快速路由配置，这部分可以根据项目的需要进行添加配置。  
+```
+    /**
+     * 扩展类库 - 快速路由配置
+     */
+    'FastRoute' => array(
+         /**
+          * 格式：array($method, $routePattern, $handler)
+          *
+          * @param string/array $method 允许的HTTP请求方法，可以为：GET/POST/HEAD/DELETE 等
+          * @param string $routePattern 路由的正则表达式
+          * @param string $handler 对应PhalApi中接口服务名称，即：?service=$handler
+          */
+        'routes' => array(
+            array('GET', '/user/get_base_info/{user_id:\d+}', 'User.GetBaseInfo'),
+        ),
+    ),
+```
+其中，routes数组中的每一个数组表示一条路由配置，第一个参数是允许的HTTP请求方法，可以为：GET/POST/HEAD/DELETE等；第二个参数是路由的正则表达式；第三个参数是对应的接口服务名称，即原来的servcie参数。如上面示例中，配置后访问```/user/get_base_info/1```等效于原来的```/?service=User.GetBaseInfo&user_id=1```。  
 
 这里为了方便理解，假设前面的Shop商城项目中，现在需要添加评论功能，相应地需要提供评论接口服务。显然，评论功能需要发表评论、更新评论、删除评论以及获取评论这些基本功能。对应地，我们可以创建一个新的接口类Api_Comment，并添加对应的成员函数。  
 ```
@@ -2754,8 +2774,81 @@ class Api_Comment extends PhalApi_Api {
 
 为此，我们需要在项目配置文件./Config/app.php中追加的路由配置为：  
 ```
-
+    /**
+     * 扩展类库 - 快速路由配置
+     */
+    'FastRoute' => array(
+         /**
+          * 格式：array($method, $routePattern, $handler)
+          *
+          * @param string/array $method 允许的HTTP请求方烤鸡，可以为：GET/POST/HEAD/DELETE 等
+          * @param string $routePattern 路由的正则表达式
+          * @param string $handler 对应PhalApi中接口服务名称，即：?service=$handler
+          */
+        'routes' => array(
+            array('GET', '/shop/comment/{id:\d+}', 'Comment.Get'),
+            array('PUT', '/shop/comment', 'Comment.Add'),
+            array('POST', '/shop/comment', 'Comment.Add'),
+            array('DELETE', '/shop/comment/{id:\d+}', 'Comment.Delete'),
+        ),
+    ),
 ```
+
+与其他扩展不同，这里除了需要在项目中进行代码配置外，还需要一项很重要的配置，即服务器的配置，需要把不存在的文件路径交给相应的入口文件进行处理。由于我们这里只是对Shop项目采用了RESTful，所以对于以/shop开头且不存在的URI，要交给./Public/shop/index.php文件进行处理。本书使用的是Nginx，所以在Nginx配置文件调整了文件处理的顺序，以及添加了对应的rewrite规则，下面是对应改动与新增的配置。  
+```
+    location / {
+        try_files $uri $uri/ $uri/index.php;
+        #index index.html index.htm index.php;
+    }
+
+    if (!-e $request_filename) {
+        rewrite ^/shop/(.*)$ /shop/index.php/$1 last;
+    }
+```    
+对于使用Apache或其他服务器的配置也类似，关键是当访问的URI不存在时，需要交由项目的入口文件进行处理。让我们通过示例来逐步分解这一过程，加深对这块的理解。  
+
+例如，请求的URL为：  
+```
+http://api.phalapi.net/shop/comment
+```
+由于此路径是不存在的，所以会触发rewrite规则，变成了带有index.php的路径。  
+```
+http://api.phalapi.net/shop/index.php/comment
+```
+
+如果到了这一步，Nginx服务器还提供404，则需要注意是否配置了index.php处理的方式。例如404时出现这样的error.log错误日记：  
+```
+2017/05/12 08:54:58 [error] 2300#0: *9 open() "/path/to/PhalApi/Public/shop/index.php/comment" failed (20: Not a directory), client: 192.168.0.101, server: api.phalapi.net, request: "GET /shop/comment HTTP/1.1", host: "api.phalapi.net"
+```
+这表示，rewrite规则已生效，但未交由/shop/index.php处理，此时可再添加这样的配置。  
+```
+    location / {
+        try_files $uri $uri/ $uri/index.php;
+        #index index.html index.htm index.php;
+    }
+```
+根据Nginx的说明，try_files会先判断$uri这个文件是否存在，再判断$uri/这个目录是否存在，最后重定向到$uri/index.php这个文件。至此，再重新访问上面的URL，便可正常响应了。  
+```
+192.168.0.101 - - [12/May/2017:09:24:17 +0800] "GET /shop/comment/1 HTTP/1.1" 200 108 "-" "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:53.0) Gecko/20100101 Firefox/53.0"
+```
+
+还有一点补充说明一下。由于本书使用的环境是PHP 5.3.10，而FastRoute需要PHP 5.4.0及以上版本。所以针对这一节中FastRoute的演示，我们专门部署了PHP 7.0.0RC环境。其他章节若无特殊说明，仍然使用本书约定的版本PHP 5.3.10。
+
+#### (3) FastRoute扩展的注册
+
+配置好后，接下来就是注册服务。根据情况，可以在初始化文件./Public/init.php注册，也可以在项目入口文件如这里的./Public/shop/index.php注册。而注册FastRoute扩展的具体位置比较关键，应该放置在接口服务响应前，在自定义```DI()->request```注册后，由于FastRoute扩展会对```DI()->request```产生副作用，因此在使用时如果不能满足项目需要，可进行相应调整。这里的注册代码是：  
+```
+// $ vim ./Public/shop/index.php 
+// 显式初始化，并调用分发
+DI()->fastRoute = new FastRoute_Lite();
+DI()->fastRoute->dispatch();
+
+/** ---------------- 响应接口请求 ---------------- **/
+```
+
+#### (4) FastRoute扩展的使用
+
+最后，我们可以来体验一下FastRoute扩展所带来的RESTful访问效果。
 
 ### 3.8.2 使用PHPRPC协议
 
