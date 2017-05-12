@@ -3047,6 +3047,116 @@ $client->response(json_encode($params)));
 
 ### 3.8.4 创建命令行CLI项目
 
+虽然PhalApi专门为接口服务而设计，但若需要使用PhalApi构建命令行CLI项目，也是可以轻松定制实现的。这时需要使用到基于GetOpt的CLI扩展类库，其主要作用是完成命令行参数的解析和处理。  
+
+> 参考：GetOpt的Github项目地址为：https://github.com/ulrichsg/getopt-php  
+
+#### (1) CLI扩展类库的安装
+
+从PhalApi-Library扩展库中的CLI目录拷贝到你项目的Library目录下即可。  
+```
+cp /path/to/PhalApi-Library/CLI/ ./PhalApi/Library/ -R
+```
+到此CLI扩展安装完毕！  
+
+#### (2) 编写命令行入口文件
+
+使用CLI扩展构建命令行项目，不需要添加扩展配置，也不需要进行DI服务注册，但需要编写一个单独的CLI入口文件。此CLI入口文件可参考原来项目入口文件的实现，如这里的./Public/shop/index.php。文件路径可根据项目需要放置，通常不建议放置外部可访问的目录Public内，但这为了方便演示，保存到了./Public/shop/cli文件。其代码主要有：  
+```
+// $ vim ./Public/shop/cli
+
+#!/usr/bin/env php
+<?php
+require_once dirname(__FILE__) . '/../init.php';
+
+// 装载你的接口
+DI()->loader->addDirs('Shop');
+
+$cli = new CLI_Lite();
+$cli->response();
+```
+上面的CLI入口文件，与原来的入口文件类似，先是加载初始化文件，再装载项目目录，最后改用CLI扩展进行响应。 
+
+创建好CLI入口文件后，记得需要为其添加执行权限，即：  
+```
+$ chmod +x ./Public/shop/cli
+```
+
+#### (3) 运行和使用
+
+准备好CLI命令行入口后，便试运行一下。  
+```
+$ ./Public/shop/cli 
+Usage: ./Public/shop/cli [options] [operands]
+Options:
+  -s, --service <arg>     接口服务
+  --help 
+```
+可以看到，需要使用```--service```参数传递接口服务名称，或者使用```-s```缩写形式。  
+
+例如，需要调用Hello World接口服务，可以：  
+```
+$ ./Public/shop/cli --service Welcome.Say
+{"ret":200,"data":"Hello World","msg":""}
+```
+也可以使用缩写的形式：  
+```
+$ ./Public/shop/cli -s Welcome.Say
+{"ret":200,"data":"Hello World","msg":""}
+```
+
+当需要传递更多接口参数时，可以在后面继续添加相应的参数。例如调用商品ID为1的快照信息，需要添加```--id 1```参数。  
+```
+$ ./Public/shop/cli --service Goods.Snapshot --id 1
+```
+又如，调用评论接口更新评论ID为1的内容时，需要添加```--id 1```和```--content "通过CLI 提供的评论内容"```这两个参数。  
+```
+$ ./Public/shop/cli --service Comment.Update --id 1 --content "通过CLI 提供的评论内容"
+```
+当参数存在空格时，可以像上面这样使用双引号。
+
+再一次，可以看到，接口服务开发好后，通过使用扩展，可轻松切换成其他形式的访问，例如RESTful风格、phprpc协议、CLI命令行等。
+
+#### (4) 获取帮助
+
+命令行项目还有一个颇为有趣功能，那就是常用的帮助信息。当指定接口服务后，若需要查询需要哪些接口参数，可以使用```--help```查看帮助信息，即查看接口参数说明。  
+
+例如，对于获取商品快照信息的```Goods.Snapshot```服务，若需要查看其接口参数有哪些，可以这样：  
+```
+$ ./Public/shop/cli -s Goods.Snapshot --help
+Usage: ./Public/shop/cli [options] [operands]
+Options:
+  -s, --service <arg>     接口服务
+  --help                  
+  --id <arg>              商品ID
+```
+这里的使用说明，会根据配置的接口参数规则自动生成。  
+
+让我们来把前面更新评论的接口服务参数规则再完善一下，补充参数说明，并添加一个带有默认值非必须的author参数。  
+```
+class Api_Comment extends PhalApi_Api {
+    public function getRules() {
+        return array(
+            'update' => array(
+                'id' => array('name' => 'id', 'type' => 'int', 'require' => true, 'desc' => '评论ID'),
+                'content' => array('name' => 'content', 'require' => true, 'desc' => '待更新的评论内容'),
+                'author' => array('name' => 'author', 'default' => 'nobody', 'desc' => '评论作者'),
+            ),
+
+```    
+再次查看帮助，可以看到相应更新了。  
+```
+$ ./Public/shop/cli -s Comment.Update --help
+
+Usage: ./Public/shop/cli [options] [operands]
+Options:
+  -s, --service <arg>     接口服务
+  --help                  
+  --id <arg>              评论ID
+  --content <arg>         待更新的评论内容
+  --author [<arg>]        评论作者
+```  
+
 ### 3.8.5 小结
 
 //TODO 各种协议、方案的对比。

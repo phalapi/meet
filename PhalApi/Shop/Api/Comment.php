@@ -14,8 +14,9 @@ class Api_Comment extends PhalApi_Api {
                 'content' => array('name' => 'content', 'require' => true),
             ),
             'update' => array(
-                'id' => array('name' => 'id', 'type' => 'int', 'require' => true),
-                'content' => array('name' => 'content', 'require' => true),
+                'id' => array('name' => 'id', 'type' => 'int', 'require' => true, 'desc' => '评论ID'),
+                'content' => array('name' => 'content', 'require' => true, 'desc' => '待更新的评论内容'),
+                'author' => array('name' => 'author', 'default' => 'nobody', 'desc' => '评论作者'),
             ),
             'delete' => array(
                 'id' => array('name' => 'id', 'type' => 'int', 'require' => true),
