@@ -171,7 +171,7 @@ var_dump($di['aClosure']);
 
 如同类成员属性的方式一样，此数组形式也不能指定默认值。  
   
-可以看到，对于设置和获取资源，我们可以根据自己的喜爱而选择不同的操作方式。但这四种操作方式之间又有一些微妙的区别，例如类成员属性和数组形式不支持指定默认值，使用类成员属性和setter访问器时不能使用非法的变量名称。通过类名的方式来进行延迟加载，需要等初始化的类提供public访问级别无参数的构造函数。如果还有其他需要初始化的工作，可以放置在onInitialize()函数成员内，DI会在对类实例化时自动触发此函数的调用。  
+可以看到，对于设置和获取资源，我们可以根据自己的喜爱而选择不同的操作方式。但这四种操作方式之间又有一些微妙的区别，例如类成员属性和数组形式不支持指定默认值，使用类成员属性和setter访问器时不能使用非法的变量名称。通过类名的方式来进行延迟加载，需要等初始化的类提供public访问级别无参数的构造函数。如果还有其他需要初始化的工作，可以放置在onInitialize()成员函数内，DI会在对类实例化时自动触发此函数的调用。  
 
 ### 3.1.3 架构明显的编程风格
 
@@ -749,7 +749,7 @@ class Api_Welcome extends PhalApi_Api {
 
  + 接口名称
 
-接口中文名称，不带任何注解的注释，通常为接口类函数成员的第一行注释。如上面提示的“//请使用@desc 注释”，可以通过类函数成员的注释来调整。  
+接口中文名称，不带任何注解的注释，通常为接口类成员函数的第一行注释。如上面提示的“//请使用@desc 注释”，可以通过类成员函数的注释来调整。  
 ```
     /**
      * 欢迎光临
@@ -759,7 +759,7 @@ class Api_Welcome extends PhalApi_Api {
 
  + 更多说明
 
-对应接口类函数成员的```@desc```注释。如上面提示的“//请使用@desc 注释”，可以添加```@desc```注释来调整。  
+对应接口类成员函数的```@desc```注释。如上面提示的“//请使用@desc 注释”，可以添加```@desc```注释来调整。  
 ```
     /**
      * 欢迎光临
@@ -818,7 +818,7 @@ http://api.phalapi.net/shop/checkApiParams.php?service=Goods.Snapshot
 
  + 接口名称
 
-接口中文名称，不带任何注解的注释，通常为接口类函数成员的第一行注释。如：     
+接口中文名称，不带任何注解的注释，通常为接口类成员函数的第一行注释。如：     
 ```
     /**
      * 获取商品快照信息
@@ -828,7 +828,7 @@ http://api.phalapi.net/shop/checkApiParams.php?service=Goods.Snapshot
 
  + 接口说明
 
-对应接口类函数成员的```@desc```注释。如：
+对应接口类成员函数的```@desc```注释。如：
 ```
     /**
      * @desc 获取商品基本和常用的信息
@@ -851,7 +851,7 @@ http://api.phalapi.net/shop/checkApiParams.php?service=Goods.Snapshot
 
  + 返回结果
 
-对应接口类函数成员的```@return```注释，可以有多组，格式为：```@return 返回类型 返回字段 说明```。这里是：  
+对应接口类成员函数的```@return```注释，可以有多组，格式为：```@return 返回类型 返回字段 说明```。这里是：  
 ```
     /**
      * @return int      goods_id    商品ID
@@ -1452,7 +1452,7 @@ class PhpUnderControl_ApiWelcome_Test extends PHPUnit_Framework_TestCase
 require_once dirname(__FILE__) . '/../test_env.php';
 ```
 
-此时生成的单元测试骨架，会对public访问级别的函数成员生成一一对应的测试用例，并具备一些基本的验证功能。对于刚生成的单元测试，可以试运行一下。  
+此时生成的单元测试骨架，会对public访问级别的成员函数生成一一对应的测试用例，并具备一些基本的验证功能。对于刚生成的单元测试，可以试运行一下。  
 ```
 Tests$ phpunit ./Api/Api_Welcome_Test.php 
 PHPUnit 4.3.4 by Sebastian Bergmann.
@@ -1484,7 +1484,7 @@ class Domain_Goods {
     }
 }
 ```
-暂且先不关注这里具体的实现。这里需要一个没有缺省值的```$goodsId```参数，并且返回的是一个数组。phalapi-buildtest命令会自动识别参数列表，以及使用参数缺省值填充，但对于返回值的类型验证，则需要依据函数成员的```@return```注解。为此，我们可以先添加返回类型为数组的注解。  
+暂且先不关注这里具体的实现。这里需要一个没有缺省值的```$goodsId```参数，并且返回的是一个数组。phalapi-buildtest命令会自动识别参数列表，以及使用参数缺省值填充，但对于返回值的类型验证，则需要依据成员函数的```@return```注解。为此，我们可以先添加返回类型为数组的注解。  
 ```
     /**
      * @return array 快照信息
@@ -1709,7 +1709,7 @@ $ find ./Shop/ -name "Stock*"
 
 查看各个文件，可以看到类似下面这样的代码内容。  
 
-生成的接口类文件，默认带有go()函数成员，并简单调用领域业务类。  
+生成的接口类文件，默认带有go()成员函数，并简单调用领域业务类。  
 ```
 $ cat ./Shop/Api/Stock.php 
 <?php
@@ -1745,7 +1745,7 @@ class Api_Stock extends PhalApi_Api {
 }
 ```
 
-生成的领域业务类，同样带有go()函数成员，并简单调用数据模型类。
+生成的领域业务类，同样带有go()成员函数，并简单调用数据模型类。
 ```
 $ cat ./Shop/Domain/Stock.php 
 <?php
@@ -2627,11 +2627,141 @@ $addresses = array('chanzonghuang@gmail.com', 'test@phalapi.com');
 $mailer->send($addresses, 'Test PHPMailer Lite', 'something here ...');
 ```
 
+ + **PHPMailer扩展的实现方式**
+
+此扩展是基于PHPMailer的邮件发送，PHPMailer开源类库的功能很简单，但在这里只封装了部分功能，即简单的邮件发送。对于这种通过封装，最后只提供复杂接口中的部分操作的场景，适合使用外观模式。开发人员可以在不深入了解PHPMailer开源类库的情况下，快速完成邮件的发送功能。  
+
+与此类似，对于包装了第三方开源类库，或者第三方SDK的扩展类库，都适宜采用外观模式进行简化。  
+
 ### 3.7.4 从微架构到扩展类库的演进
 
-外观模式
+在实际项目的开发过程中，也可以有意识地将一些通用的工具和操作与业务分离，方便后续可以在项目内的其他场景更好地重用。当抽离成工具或者通用类后，则可以进一步推广到其他项目使用，封装成扩展类库的形式，复用组件。如果允许，也可以发扬开源精神，分享给社区。这也是符合从微架构到应用构架、系统架构、乃至企业架构的演进之路。 
+
+当需要开发新的扩展类库时，为了统一扩展类库的风格、便于用户快速上手，易于使用，这里建议： 
+
+ + 代码：统一放置在Library目录下，一个扩展包一个目录，尽量以Lite.php文件为入口类，遵循PEAR包命名规范
+ + 配置：统一放置在```DI()->config->get('app.扩展包名')```中，避免配置冲突
+ + 文档：统一提供对扩展类库的功能、安装和配置、使用示例以及运行效果进行说明的文档
+
 
 ## 3.8 超越HTTP/HTTPS协议
+
+PhalApi默认使用的是HTTP/HTTPS协议，正如我们所介绍的那样，PhalApi还可用于搭建微服务、RESTful接口或Web Services。这一节，我们将一起探讨如何超越HTTP/HTTPS协议，具体有如何使用FastRoute扩展构建RESTful API，使用PHPRPC协议，利用SOAP搭建Web Services，以及创建命令行CLI项目。  
+
+使用不同的协议，或者采用不同的架构风格，主要是影响接口服务的访问方式，因此我们在切换到其他方案时，只要相应调整接口服务的请求与响应即可。接口服务的核心实现通常无须调整即可共用，但根据不同的使用场景，具体的内部实现需要相应调整。例如命令行CLI项目中不存在COOKIE，所以与COOKIE相关的处理代码会失效或需要移除。  
+
+### 3.8.1 构建RESTful API
+
+RESTful是一种架构风格，这里不过多介绍什么是RESTful API，而重点在于介绍如何使用FastRoute扩展快速构建RESTful API。
+
+#### (1) FastRoute扩展的安装、配置注册与使用
+
+FastRoute扩展是基于开源类库FastRoute开发实现的，需要PHP 5.4.0及以上版本，通过配置实现自定义路由配置可轻松映射到PhalApi中的service接口服务。 
+> 参考：FastRoute - Fast request router for PHP：https://github.com/nikic/FastRoute
+
+如前面扩展类库的安装说明，只需要把PhalApi-Library项目中的FastRoute目录拷贝到你项目的Library目录下即可，即：  
+```
+cp /path/to/PhalApi-Library/FastRoute/ ./PhalApi/Library/ -R
+```
+
+随后，在项目配置文件./Config/app.php中追加快速路由配置，这部分可以根据项目的需要进行添加配置。  
+
+这里为了方便理解，假设前面的Shop商城项目中，现在需要添加评论功能，相应地需要提供评论接口服务。显然，评论功能需要发表评论、更新评论、删除评论以及获取评论这些基本功能。对应地，我们可以创建一个新的接口类Api_Comment，并添加对应的成员函数。  
+```
+// $ vim ./Shop/Api/Comment.php
+<?php
+class Api_Comment extends PhalApi_Api {
+
+    /**
+     * 获取评论
+     */
+    public function get() {
+    }
+
+    /**
+     * 添加评论||
+     */
+    public function add() {
+    }
+
+    /**
+     * 更新评论
+     */
+    public function update() {
+    }
+
+    /**
+     * 删除评论
+     */
+    public function delete() {
+    }
+}
+```
+
+为简化业务功能，突出RESTful API的构建，假设这里的评论功能很简单，只有评论ID和评论内容这两项。上面这四个接口服务所需要的参数配置分别如下：  
+```
+class Api_Comment extends PhalApi_Api {
+
+    public function getRules() {
+        return array(
+            'get' => array(
+                'id' => array('name' => 'id', 'type' => 'int', 'require' => true),
+            ),
+            'add' => array(
+                'content' => array('name' => 'content', 'require' => true),
+            ),
+            'update' => array(
+                'id' => array('name' => 'id', 'type' => 'int', 'require' => true),
+                'content' => array('name' => 'content', 'require' => true),
+            ),
+            'delete' => array(
+                'id' => array('name' => 'id', 'type' => 'int', 'require' => true),
+            ),
+        );
+    }
+
+```
+
+同时，模拟各接口的实现。实现方式很简单，获取相应的参数并简单返回，或者使用一些固定的测试数据。  
+```
+    public function get() {
+        return array('id' => $this->id, 'content' => '模拟获取评论内容');
+    }
+
+    public function add() {
+        return array('id' => 1, 'content' => '模拟添加：' . $this->content);
+    }
+
+    public function update() {
+        return array('id' => $this->id, 'content' => '模拟更新：' . $this->content);
+    }
+
+    public function delete() {
+        return array('id' => $this->id);
+    }
+```
+
+对于此评论功能，最终希望构建的RESTful API和原来访问方式的映射关系如下：  
+
+表3-9 评论RESTful API的映射关系
+
+接口服务|原来的HTTP/HTTPS访问方式|新的RESTful访问方式
+---|---|---
+获取评论|/shop/?service=Comment.Get|GET /shop/comment/{id}
+添加评论|/shop/?service=Comment.Add|PUT /shop/comment
+更新评论|/shop/?service=Comment.Update|POST /shop/comment
+删除评论|/shop/?service=Comment.Delete|DELETE /shop/comment/{id}
+
+为此，我们需要在项目配置文件./Config/app.php中追加的路由配置为：  
+```
+
+```
+
+### 3.8.2 使用PHPRPC协议
+
+### 3.8.3 利用SOAP搭建Web Services
+
+### 3.8.4 创建命令行CLI项目
 
 ## 本章小结
 ## 参考资料
