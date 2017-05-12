@@ -2745,7 +2745,7 @@ class Api_Comment extends PhalApi_Api {
 同时，模拟各接口的实现。实现方式很简单，获取相应的参数并简单返回，或者使用一些固定的测试数据。  
 ```
     public function get() {
-        return array('id' => $this->id, 'content' => '模拟获取评论内容');
+        return array('id' => $this->id, 'content' => '模拟获取：评论内容');
     }
 
     public function add() {
@@ -2757,7 +2757,7 @@ class Api_Comment extends PhalApi_Api {
     }
 
     public function delete() {
-        return array('id' => $this->id);
+        return array('id' => $this->id, 'content' => '模拟删除：评论内容');
     }
 ```
 
@@ -2768,8 +2768,8 @@ class Api_Comment extends PhalApi_Api {
 接口服务|原来的HTTP/HTTPS访问方式|新的RESTful访问方式
 ---|---|---
 获取评论|/shop/?service=Comment.Get|GET /shop/comment/{id}
-添加评论|/shop/?service=Comment.Add|PUT /shop/comment
-更新评论|/shop/?service=Comment.Update|POST /shop/comment
+添加评论|/shop/?service=Comment.Add|POST /shop/comment
+更新评论|/shop/?service=Comment.Update|POST /shop/comment/{id}
 删除评论|/shop/?service=Comment.Delete|DELETE /shop/comment/{id}
 
 为此，我们需要在项目配置文件./Config/app.php中追加的路由配置为：  
@@ -2787,8 +2787,8 @@ class Api_Comment extends PhalApi_Api {
           */
         'routes' => array(
             array('GET', '/shop/comment/{id:\d+}', 'Comment.Get'),
-            array('PUT', '/shop/comment', 'Comment.Add'),
             array('POST', '/shop/comment', 'Comment.Add'),
+            array('POST', '/shop/comment/{id:\d+}', 'Comment.Update'),
             array('DELETE', '/shop/comment/{id:\d+}', 'Comment.Delete'),
         ),
     ),
@@ -2858,7 +2858,7 @@ $ curl "http://api.phalapi.net/shop/comment/1"
   "ret": 200,
   "data": {
     "id": 1,
-    "content": "模拟获取评论内容"
+    "content": "模拟获取：评论内容"
   },
   "msg": ""
 }
@@ -2880,13 +2880,28 @@ $ curl -d "content=test" "http://api.phalapi.net/shop/comment"
 
 使用PUT方式访问更新评论接口服务，并把id为1的评论内容更新为“新的评论内容”。  
 ```
+$ curl -X POST -d "content=新的评论内容" "http://api.phalapi.net/shop/comment/1" 
 
+{
+    "ret": 200,
+    "data": {
+        "id": 1,
+        "content": "模拟更新：新的评论内容"
+    },
+    "msg": ""
+}
 ```
 
 使用DELETE方式访问删除评论接口服务，并删除id为1的评论。  
 ```
 $ curl  -X DELETE "http://api.phalapi.net/shop/comment/1"
-{"ret":200,"data":{"id":1},"msg":""}
+{
+    "ret": 200,
+    "data": {
+        "id": 1
+    },
+    "msg": ""
+}
 ```
 
 ### 3.8.2 使用PHPRPC协议

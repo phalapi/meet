@@ -27,7 +27,7 @@ class Api_Comment extends PhalApi_Api {
      * 获取评论
      */
     public function get() {
-        return array('id' => $this->id, 'content' => '模拟获取评论内容');
+        return array('id' => $this->id, 'content' => '模拟获取：评论内容');
     }
 
     /**
@@ -48,6 +48,6 @@ class Api_Comment extends PhalApi_Api {
      * 删除评论
      */
     public function delete() {
-        return array('id' => $this->id);
+        return array('id' => $this->id, 'content' => '模拟删除：评论内容');
     }
 }
