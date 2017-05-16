@@ -1867,6 +1867,7 @@ RabbitMQ|PhalApi-RabbitMQ队列拓展|基于队列标杆中的RabbitMQ的队列�
 Redis|基于PhalApi的Redis拓展|提供更丰富的Redis操作，并且进行了分库处理可以自由搭配。
 SMS|PhalApi-SMS容联云短信服务器扩展|基于容联云通讯，发送短信。
 Smarty|基于PhalApi的Smarty扩展|基于老牌的PHP模版引擎Smarty，提供视图渲染功能。
+SOAP|SOAP扩展|使用PHP官方提供的SOAP协议，用于搭建Web Services。
 Swoole|Swoole扩展|基于swoole，支持的长链接和异步任务实现。
 Task|计划任务扩展|用于后台计划任务的调度。
 ThirdLogin|第三方登录扩展|第三方登录。
@@ -3040,7 +3041,7 @@ array(3) {
 
  + 调用方式的改变  
 
-首先是客户端调用方式的改变，但值得开心的是，phprpc对很多语言都有对应的SDK民支持。具体可以可参考phprpc官网。  
+首先是客户端调用方式的改变，但值得开心的是，phprpc对很多语言都有对应的SDK包支持。具体可以可参考phprpc官网。  
 
  + POST参数传递方式的改变
 
@@ -3153,6 +3154,27 @@ array(3) {
   string(0) ""
 }
 ```
+#### (6) 对客户端的影响
+
+当使用SOAP访问接口服务时，服务端可以通过使用SOAP扩展快速搭建Web Services，但对于客户端，如同使用PHPRPC协议一样，也要进行三方面的调整。这里简单说明一下。   
+
+ + 调用方式的改变  
+
+首先是客户端调用方式的改变，需要通过SOAP协议进行访问。  
+
+ + POST参数传递方式的改变
+
+其次是对POST参数传递的改变。和前面的PHPRPC协议一样，客户端需要把全部的参数JSON编码后再传递。当POST的数据和GET的数据冲突时，以POST为准。   
+
+相应地，当需要传递POST参数时，客户需要这样调整：
+```
+$data = $client->__soapCall('response', array(json_encode($params)));
+```
+若无此POST参数，则可以忽略不传。
+
+ + 返回结果格式的改变
+
+和PHPRPC协议一样，客户端接收到的是接口服务直接返回的源数据，不再是序列化后返回的字符串。如前面示例中，返回的是数组类型。   
 
 
 ### 3.8.4 创建命令行CLI项目
