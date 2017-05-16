@@ -2843,6 +2843,10 @@ $ curl "http://api.phalapi.net/shop/comment/1"
   "msg": ""
 }
 ```
+等效于原来的：  
+```
+$ curl "http://api.phalapi.net/shop/?service=Comment.Get&id=1"
+```
 
 使用POST方式访问评论接口服务，并添加内容为“test”的评论。  
 ```
@@ -2856,6 +2860,10 @@ $ curl -d "content=test" "http://api.phalapi.net/shop/comment"
     },
     "msg": ""
 }
+```
+等效于原来的：  
+```
+$ curl -d "content=test" "http://api.phalapi.net/shop/?service=Comment.Add"
 ```
 
 使用PUT方式访问更新评论接口服务，并把id为1的评论内容更新为“新的评论内容”。  
@@ -2871,6 +2879,10 @@ $ curl -X POST -d "content=新的评论内容" "http://api.phalapi.net/shop/comm
     "msg": ""
 }
 ```
+等效于原来的： 
+```
+$ curl -X POST -d "id=1&content=新的评论内容" "http://api.phalapi.net/shop/?service=Comment.Update"
+```
 
 使用DELETE方式访问删除评论接口服务，并删除id为1的评论。  
 ```
@@ -2884,6 +2896,10 @@ $ curl -X DELETE "http://api.phalapi.net/shop/comment/1"
     },
     "msg": ""
 }
+```
+等效于原来的： 
+```
+$ curl "http://api.phalapi.net/shop/?service=Comment.Delete&id=1"
 ```
 
 一切运行良好！在不修改已有接口服务的前提下，通过新增FastRoute扩展，我们就可以轻松完成了RESTful API的构建工作。是不是觉得很有趣？  
