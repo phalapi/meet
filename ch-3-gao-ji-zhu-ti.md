@@ -3222,7 +3222,7 @@ $ ./Public/shop/cli
 Usage: ./Public/shop/cli [options] [operands]
 Options:
   -s, --service <arg>     接口服务
-  --help 
+  -h, --help              查看帮助信息
 ```
 可以看到，需要使用```--service```参数传递接口服务名称，或者使用```-s```缩写形式。  
 
@@ -3259,7 +3259,7 @@ $ ./Public/shop/cli -s Goods.Snapshot --help
 Usage: ./Public/shop/cli [options] [operands]
 Options:
   -s, --service <arg>     接口服务
-  --help                  
+  -h, --help              查看帮助信息
   --id <arg>              商品ID
 ```
 这里的使用说明，会根据配置的接口参数规则自动生成。  
@@ -3283,7 +3283,7 @@ $ ./Public/shop/cli -s Comment.Update --help
 Usage: ./Public/shop/cli [options] [operands]
 Options:
   -s, --service <arg>     接口服务
-  --help                  
+  -h, --help              查看帮助信息
   --id <arg>              评论ID
   --content <arg>         待更新的评论内容
   --author [<arg>]        评论作者
