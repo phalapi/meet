@@ -48,7 +48,7 @@ PhalApi默认使用的是HTTP/HTTPS协议进行通讯，请求接口的完整URL
 #### (3) 指定接口服务
 在PhalApi中，我们统一约定使用```service```参数来指定所请求的接口服务。通常情况下，此参数使用GET方式传递，即使用```$_GET['service']```，其格式为：```?service=Class.Action```。其中```Class```是对应请求的接口剔除Api_前缀后的类名，```Action```则是待执行的接口类中的方法名。
 
-> 温馨提示：未指定service参数时，默认使用```?service=Default.Index```。  
+> **温馨提示：**未指定service参数时，默认使用```?service=Default.Index```。  
   
 如请求默认的接口服务可用```?service=Default.Index```，则相应会调用```Api_Default::Index()```这一接口服务；若请求的是```?service=Welcome.Say```，则会调用```Api_Welcome::Say```这一接口服务。  
   
@@ -156,7 +156,7 @@ http://api.phalapi.net/shop/?service=User.Login&username=dogstar&password=123456
 }
 ```
 如果传递的密码长度不对，也会得到一个错误的返回。  
-> 温馨提示：当接口参数非法时，返回的ret都为400，且data为空。在这一章节中，当再次非法返回时，将省略ret与data，以节省篇幅。
+> **温馨提示：**当接口参数非法时，返回的ret都为400，且data为空。在这一章节中，当再次非法返回时，将省略ret与data，以节省篇幅。
 
 #### (3) 三级参数规则配置
 参数规则主要有三种，分别是：系统参数规则、应用参数规则、接口参数规则。  
@@ -183,7 +183,7 @@ http://api.phalapi.net/shop/?service=User.Login&username=dogstar&password=123456
 ?service=User|GetBaseInfo
 ```
 
-> 温馨提示：service参数中的类名只能开头小写，否则会导致linux系统下类文件加载失败。 
+> **温馨提示：**service参数中的类名只能开头小写，否则会导致linux系统下类文件加载失败。 
 
 应用参数是指在一个接口系统中，全部项目的全部接口都需要的参数，或者通用的参数。假如我们的商城接口系统中全部的接口服务都需要必须的签名sign参数，以及非必须的版本号，则可以在```./Config/app.php```中的```apiCommonRules```进行应用参数规则的配置：  
 ```
@@ -320,7 +320,7 @@ header   | $_SERVER['HTTP_X']
 ```
 array('name' => 'username')
 ```
-> 温馨提示：这一小节的参数规则配置示例，都省略了类属性，以关注配置本身的内容。  
+> **温馨提示：**这一小节的参数规则配置示例，都省略了类属性，以关注配置本身的内容。  
 
 这样就配置了一个参数规则，接口参数名字叫username，类型为字符串。  
 
@@ -438,7 +438,7 @@ array('name' => 'params', 'type' => 'array', 'format' => 'json')
 ```
 array ( 'username' => 'test', 'password' => '123456', )
 ```
-> 温馨提示：使用JSON传递参数时，建议使用POST方式传递。若使用GET方式，须注意参数长度不应超过浏览器最大限制长度，以及URL编码问。  
+> **温馨提示：**使用JSON传递参数时，建议使用POST方式传递。若使用GET方式，须注意参数长度不应超过浏览器最大限制长度，以及URL编码问。  
 
 若使用JSON格式时，设置了默认值为：  
 ```
@@ -562,7 +562,7 @@ class Common_Request_Version {
 }
 ```
 
-> 温馨提示：回调函数的签名为：```function format($value, $rule, $params)```，第一个为参数原始值，第二个为所配置的规则，第三个可选参数为配置规则中的params选项。最后应返回转换后的参数值。  
+> **温馨提示：**回调函数的签名为：```function format($value, $rule, $params)```，第一个为参数原始值，第二个为所配置的规则，第三个可选参数为配置规则中的params选项。最后应返回转换后的参数值。  
   
 还记得我们前面刚学的三级参数规则吗？虽然在应用参数配置中已配置公共version参数规则，但我们可以在具体的接口类中重新配置这个规则。把在Hello World接口中把这个版本参数类型修改成此自定义回调类型。即：  
 ```
@@ -1194,7 +1194,7 @@ DI()->response->addHeaders('Cache-Control, 'max-age=600, must-revalidate');
  + 更好的做法：```&__phalapi_debug__=202cb962ac59075b964b07152d234b70```  
   
 #### (2) 调试信息有哪些？  
-> 温馨提示：调试信息仅当在开启调试模式后，才会返回并显示。  
+> **温馨提示：**调试信息仅当在开启调试模式后，才会返回并显示。  
   
 正常响应的情况下，当开启调试模式后，会返回多一个```debug```字段，里面有相关的调试信息。如下所示：  
 ```
@@ -1394,7 +1394,7 @@ class Common_Response_XML extends PhalApi_Response {
     }
 }
 ```
-> 温馨提示：关于数组转XML，可参考[将PHP数组转成XML](http://www.oschina.net/code/snippet_54100_1548)，或[Convert array to XML in PHP](http://www.codexworld.com/convert-array-to-xml-in-php/)。  
+> **温馨提示：**关于数组转XML，可参考[将PHP数组转成XML](http://www.oschina.net/code/snippet_54100_1548)，或[Convert array to XML in PHP](http://www.codexworld.com/convert-array-to-xml-in-php/)。  
 
 随后，在Shop项目的入口文件中重新注册。  
 ```
@@ -1540,7 +1540,7 @@ http://api.phalapi.net/shop/checkApiParams.php?service=Goods.Snapshot
 
 由前面创建的类和编写的代码、配置的规则以及文档注释，最终生成了这份接口文档。即使在未完成接口服务的开发情况下，通过此在线文档，使用方也能明确接口服务的功能，以及需要传递的参数和返回结果的说明，从而不影响他们的开发进度。 
 
-> 温馨提示：这里省略了公共参数中的签名参数和版本参数。关于在线文档的使用，后续会再进行详细说明。  
+> **温馨提示：**这里省略了公共参数中的签名参数和版本参数。关于在线文档的使用，后续会再进行详细说明。  
 
 #### (2) 在TDD下讲故事
 
@@ -1551,7 +1551,7 @@ http://api.phalapi.net/shop/checkApiParams.php?service=Goods.Snapshot
 $ cd ./Shop/Tests
 $ php ../../PhalApi/phalapi-buildtest ../Api/Goods.php Api_Goods ./test_env.php > ./Api/Goods_Test.php
 ```
-> 温馨提示：关于phalapi-buildtest脚本命令的使用，详细请见后续说明。  
+> **温馨提示：**关于phalapi-buildtest脚本命令的使用，详细请见后续说明。  
 
 上面主要是生成了```Goods.Snapshot```接口服务对应的测试骨架代码，并保存在文件./Api/Goods_Test.php里。然后，稍微修改完善生成的测试代码。  
 ```
@@ -1595,7 +1595,7 @@ Failed asserting that a NULL is not empty.
 
 /path/to/Shop/Tests/Api/Goods_Test.php:56
 ```
-> 温馨提示：PHPUnit的安装请参考[安装 PHPUnit](https://phpunit.de/manual/3.7/zh_cn/installation.html) 。  
+> **温馨提示：**PHPUnit的安装请参考[安装 PHPUnit](https://phpunit.de/manual/3.7/zh_cn/installation.html) 。  
 
 到这里，我们讲述了一个失败的故事，因为这个故事讲不下去了。但我们知道错在哪里。要想让这个故事讲得通，我们可以先简单模拟一些数据，即先讲一个假故事。  
 
@@ -2271,7 +2271,7 @@ $ tree ./Config/
 ### 2.4.3 使用Yaconf扩展快速读取配置
 
 Yaconf扩展需要PHP 7及以上版本，并且需要先安装Yaconf扩展。
-> 温馨提示：Yaconf扩展的安装请参考[laruence/yaconf](https://github.com/laruence/yaconf)。  
+> **温馨提示：**Yaconf扩展的安装请参考[laruence/yaconf](https://github.com/laruence/yaconf)。  
   
 安装部署完成后，便和正常的配置一样使用。
 
@@ -2449,7 +2449,7 @@ return array(
 ```
 其中，在servers中配置了名称为db_demo数据库实例，其host为localhost，名称为phalapi，用户名为root等。在tables中，只配置了通用路由，并且表前缀为tbl_，主键均为id，并且全部使用db_demo数据库实例。  
 
-> 温馨提示：当tables中配置的db数据库实例不存在servers中时，将会提示数据库配置错误。  
+> **温馨提示：**当tables中配置的db数据库实例不存在servers中时，将会提示数据库配置错误。  
 
 #### 如何排查数据库连接错误？
 
@@ -2729,7 +2729,7 @@ $user->where('(id, age)', array(array(1, 18), array(2, 20)))
 // WHERE name LIKE '%dog%'
 $user->where('name LIKE ?', '%dog%')
 ```
-> 温馨提示：需要模糊匹配时，不可写成：where('name LIKE %?%', 'dog')。  
+> **温馨提示：**需要模糊匹配时，不可写成：where('name LIKE %?%', 'dog')。  
 
 NULL判断查询：
 ```
