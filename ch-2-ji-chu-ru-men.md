@@ -73,11 +73,11 @@ http://api.phalapi.net/shop/?service=Welcome.Say
 接口参数是可选的，根据不同的接口服务所约定的参数进行传递。可以是GET参数，POST参数，或者多媒体数据。未定制的情况下，PhalApi既支持GET参数又支持POST参数。   
 
 如使用GET方式传递username参数：
-```
+```bash
 $ curl "http://api.phalapi.net/shop/?service=Default.Index&username=dogstar"
 ```
 也可以用POST方式传递username参数：
-```
+```bash
 $ curl -d "username=dogstar" "http://api.phalapi.net/shop/?service=Default.Index"
 ```
 
@@ -87,7 +87,7 @@ $ curl -d "username=dogstar" "http://api.phalapi.net/shop/?service=Default.Index
 接口参数，对于接口服务本身来说，是非常重要的。对于外部调用的客户端来说，同等重要。对于接口参数，我们希望能够既减轻后台开发对接口参数获取、判断、验证、文档编写的痛苦；又能方便客户端快速调用，明确参数的意义。由此，我们引入了**参数规则**这一概念，即：通过配置参数的规则，自动实现对参数的获取和验证，同时自动生成在线接口文档。  
   
 参数规则是针对各个接口服务而配置的多维规则数组，由```PhalApi_Api::getRules()```方法返回。其中，参数规则数组的一维下标是接口类的方法名，对应接口服务的Action；二维下标是类属性名称，对应在服务端获取通过验证和转换化的最终客户端参数；三维下标```name```是接口参数名称，对应外部客户端请求时需要提供的参数名称。即：  
-```
+```php
     public function getRules() {
         return array(
             '接口类方法名' => array(
@@ -105,7 +105,7 @@ $ curl -d "username=dogstar" "http://api.phalapi.net/shop/?service=Default.Index
 
 #### (1) 一个简单的示例
 假设我们现在需要提供一个用户登录的接口，接口参数有用户名和密码，那么新增的接口类和规则如下：  
-```
+```php
 // $ vim ./Shop/Api/User.php
 <?php
 
@@ -141,11 +141,15 @@ http://api.phalapi.net/shop/?service=User.Login&username=dogstar&password=123456
 在实际项目开发中，我们需要对接口参数有更细致的规定，如是否必须、长度范围、最值和默认值等。 
 
 继续上面的业务场景，用户登录接口服务的用户名参数和密码参数皆为必须，且密码长度至少为6个字符，则可以参数规则调整为：  
-```
-'login' => array(
-   'username' => array('name' => 'username', 'require' => true),
-   'password' => array('name' => 'password', 'require' => true, 'min' => 6),
-),
+```php
+// $ vim ./Shop/Api/User.php
+    public function getRules() {
+        return array(
+            'login' => array(
+                'username' => array('name' => 'username', 'require' => true),
+                'password' => array('name' => 'password', 'require' => true, 'min' => 6),
+            ),
+           ... ...
 ```
 配置好后，如果不带任何参数再次请求```?service=User.Login```，就会被视为非法请求，并得到这样的错误提示：  
 ```
@@ -186,7 +190,7 @@ http://api.phalapi.net/shop/?service=User.Login&username=dogstar&password=123456
 > **温馨提示：**service参数中的类名只能开头小写，否则会导致linux系统下类文件加载失败。 
 
 应用参数是指在一个接口系统中，全部项目的全部接口都需要的参数，或者通用的参数。假如我们的商城接口系统中全部的接口服务都需要必须的签名sign参数，以及非必须的版本号，则可以在```./Config/app.php```中的```apiCommonRules```进行应用参数规则的配置：  
-```
+```php
 //$vim ./Config/app.php
 <?php
 return array(
@@ -215,7 +219,8 @@ return array(
 
 
 例如为了加强安全性，需要为全部的用户接口服务都加上长度为4位的验证码参数：  
-```
+```php
+// $ vim ./Shop/Api/User.php
     public function getRules() {
         return array(
             '*' => array(
@@ -291,10 +296,10 @@ get      | $_GET
 cookie   | $_COOKIE            
 server   | $_SERVER            
 request  | $_REQUEST           
-header   | $_SERVER['HTTP_X']  
+header   | $_SERVER['HTTP_X']
 
 通过source参数可以轻松、更自由获取不同来源的参数。以下是一些常用的配置示例。  
-```
+```php
 // 获取HTTP请求方法，判断是POST还是GET
 'method' => array('name' => 'REQUEST_METHOD', 'source' => 'server'),
 
@@ -317,7 +322,7 @@ header   | $_SERVER['HTTP_X']
  + **字符串 string**  
 
 当一个参数规则未指定类型时，默认为string。如最简单的：  
-```
+```php
 array('name' => 'username')
 ```
 > **温馨提示：**这一小节的参数规则配置示例，都省略了类属性，以关注配置本身的内容。  
@@ -325,7 +330,7 @@ array('name' => 'username')
 这样就配置了一个参数规则，接口参数名字叫username，类型为字符串。  
 
 一个完整的写法可以为：
-```
+```php
 array('name' => 'username', 'type' => 'string', 'require' => true, 'default' => 'nobody', 'min' => 1, 'max' => 10)
 ```
 这里指定了为必选参数，默认值为nobody，且最小长度为1个字符，最大长度为10个字符，若传递的参数长度过长，如```&username=alonglonglonglongname```，则会异常失败返回：
@@ -336,19 +341,19 @@ array('name' => 'username', 'type' => 'string', 'require' => true, 'default' => 
 
 当需要验证的是中文的话，由于一个中文字符会占用3个字节。所以在min和max验证的时候会出现一些问题。为此，PhalApi提供了format配置选项，用于指定字符集。如：  
 
-```
+```php
 array('name' => 'username', 'type' => 'string', 'format' => 'utf8', 'min' => 1, 'max' => 10)
 ```
   
 我们还可以使用```regex```下标来进行正则表达式的验证，一个邮箱的例子是：  
-```
+```php
 array('name' => 'email', 'regex' => "/^([0-9A-Za-z\\-_\\.]+)@([0-9a-z]+\\.[a-z]{2,3}(\\.[a-z]{2})?)$/i")
 ```
 
  + **整型 int**  
 
 整型即自然数，包括正数、0和负数。如通常数据库中的id，即可配置成：  
-```
+```php
 array('name' => 'id', 'type' => 'int', 'require' => true, 'min' => 1)
 ```
 
@@ -358,7 +363,7 @@ array('name' => 'id', 'type' => 'int', 'require' => true, 'min' => 1)
 ```
 
 另外，对于常见的分页参数，可以这样配置：  
-```
+```php
 array('name' => 'page_num', 'type' => 'int', 'min' => 1, 'max' => 20, 'default' => 20)
 ```
 即每页数量最小1个，最大20个，默认20个。  
@@ -371,7 +376,7 @@ array('name' => 'page_num', 'type' => 'int', 'min' => 1, 'max' => 20, 'default' 
  + **布尔值 boolean**  
 
 布尔值，主要是可以对一些字符串转换成布尔值，如ok，true，success，on，yes，以及会被PHP解析成true的字符串，都会转换成TRUE。如通常的“是否记住我”参数，可配置成：
-```
+```php
 array('name' => 'is_remember_me', 'type' => 'boolean', 'default' => TRUE)
 ```
   
@@ -388,77 +393,76 @@ array('name' => 'is_remember_me', 'type' => 'boolean', 'default' => TRUE)
  + **日期 date**  
 
 日期可以按自己约定的格式传递，默认是作为字符串，此时不支持范围检测。例如配置注册时间：
-```
+```php
 array('name' => 'register_date', 'type' => 'date')
 ```
 对应地，```register_date=2015-01-31 10:00:00```则会被获取到为："2015-01-31 10:00:00"。
   
 当需要将字符串的日期转换成时间戳时，可追加配置选项```'format' => 'timestamp'```，则配置成：
-```
+```php
 array('name' => 'register_date', 'type' => 'date', 'format' => 'timestamp')
 ```
 则上面的参数再请求时，则会被转换成：1422669600。  
 
 此时作为时间戳，还可以添加范围检测，如限制时间范围在31号当天：  
-```
+```php
 array('name' => 'register_date', 'type' => 'date', 'format' => 'timestamp', 'min' =>  1422633600, 'max' => 1422719999)
 ```
 
 当配置的最小值或最大值为字符串的日期时，会自动先转换成时间戳再进行检测比较。如可以配置成：  
-```
+```php
 array('name' => 'register_date', ... ... 'min' => '2015-01-31 00:00:00', 'max' => '2015-01-31 23:59:59')
 ```
 
  + **数组 array**  
 
 很多时候在接口进行批量获取时，都需要提供一组参数，如多个ID，多个选项。这时可以使用数组来进行配置。如：  
-```
+```php
 array('name' => 'uids', 'type' => 'array', 'format' => 'explode', 'separator' => ',')
 ```
 
 这时接口参数```&uids=1,2,3```则会被转换成：  
-```
+```php
 array ( 0 => '1', 1 => '2', 2 => '3', )
 ```
 
 如果设置了默认值，那么默认值会从字符串，根据相应的format格式进行自动转换。如：  
-```
+```php
 array( ... ... 'default' => '4,5,6')
 ```
 那么在未传参数的情况下，自动会得到：  
-```
+```php
 array ( 0 => '4', 1 => '5', 2 => '6', )
 ```
 
 又如接口需要使用JSON来传递整块参数时，可以这样配置：
-```
+```php
 array('name' => 'params', 'type' => 'array', 'format' => 'json')
 ```
 对应地，接口参数```&params={"username":"test","password":"123456"}```则会被转换成：
-```
+```php
 array ( 'username' => 'test', 'password' => '123456', )
 ```
 > **温馨提示：**使用JSON传递参数时，建议使用POST方式传递。若使用GET方式，须注意参数长度不应超过浏览器最大限制长度，以及URL编码问。  
 
 若使用JSON格式时，设置了默认值为：  
-```
+```php
 array( ... ... 'default' => '{"username":"dogstar","password":"xxxxxx"}')
 ```
 那么在未传参数的情况下，会得到转换后的：  
-```
+```php
 array ( 'username' => 'dogstar', 'password' => 'xxxxxx', )
 ```
 
 特别地，当配置成了数组却未指定格式format时，接口参数会转换成只有一个元素的数组，如接口参数：```&name=test```，会转换成：
-```
+```php
 array ( 0 => 'test' )
 ```
-
 
  + **枚举 enum**  
 
 在需要对接口参数进行范围限制时，可以使用此枚举型。如对于性别的参数，可以这样配置：
-```
+```php
 array('name' => 'sex', 'type' => 'enum', 'range' => array('female', 'male'))
 ```
 当传递的参数不合法时，如```&sex=unknow```，则会被拦截，返回失败：
@@ -466,25 +470,24 @@ array('name' => 'sex', 'type' => 'enum', 'range' => array('female', 'male'))
 "msg": "非法请求：参数sex应该为：female/male，但现在sex = unknow"
 ```
   
-关于枚举类型的配置，这里需要特别注意配置时，应尽量使用字符串的值。  
-因为通常而言，接口通过GET/POST方式获取到的参数都是字符串的，而如果配置规则时指定范围用了整型，会导致底层规则验证时误判。例如接口参数为```&type=N```，而接口参数规则为：  
-```
+关于枚举类型的配置，这里需要特别注意配置时，应尽量使用字符串的值。 因为通常而言，接口通过GET/POST方式获取到的参数都是字符串的，而如果配置规则时指定范围用了整型，会导致底层规则验证时误判。例如接口参数为```&type=N```，而接口参数规则为：  
+```php
 array('name' => 'type', 'type' => 'enum', 'range' => array(0, 1, 2))
 ```
 则会出现以下这样的误判：  
-```  
+```php  
 var_dump(in_array('N', array(0, 1, 2))); // 结果为true，因为 'N' == 0
 ```  
   
 为了避免这类情况发生，应该使用使用字符串配置范围值，即可这样配置：  
-```
-array('name' => '&type', 'type' => 'enum', 'range' => array(`0`, `1`, `2`))
+```php
+array('name' => 'type', 'type' => 'enum', 'range' => array(`0`, `1`, `2`))
 ```
   
  + **文件 file**  
 
 在需要对上传的文件进行过滤、接收和处理时，可以使用文件类型，如：
-```
+```php
 array(
     'name' => 'upfile', 
     'type' => 'file', 
@@ -497,7 +500,7 @@ array(
 其中，min和max分别对应文件大小的范围，单位为字节；range为允许的文件类型，使用数组配置，且不区分大小写。 
   
 如果成功，返回的值对应的是```$_FILES["upfile"]```，即会返回：
-```
+```php
 array(
      'name' => ..., // 被上传文件的名称
      'type' => ..., // 被上传文件的类型
@@ -506,6 +509,7 @@ array(
 )
 ```
 对应的是：  
+
  + $_FILES["upfile"]["name"] - 被上传文件的名称
  + $_FILES["upfile"]["type"] - 被上传文件的类型
  + $_FILES["upfile"]["size"] - 被上传文件的大小，以字节计
@@ -518,24 +522,23 @@ array(
 
 其中，ext是对文件后缀名进行验证，当如果上传文件后缀名不匹配时将抛出异常。文件扩展名的过滤可以类似这样进行配置：
 
-+ 单个后缀名 - 数组形式  
-```
+ + 单个后缀名 - 数组形式  
+```php
 'ext' => array('jpg')
 ```
 
  + 单个后缀名 - 字符串形式  
-```
+```php
 'ext' => 'jpg'
 ```
 
  + 多个后缀名 - 数组形式  
-```
+```php
 'ext' => array('jpg', 'jpeg', 'png', 'bmp')
 ```
 
  + 多个后缀名 - 字符串形式（以英文逗号分割）  
-
-```
+```php
 'ext' => 'jpg,jpeg,png,bmp' 
 ```
 
@@ -544,11 +547,11 @@ array(
 
 当需要利用已有函数进行自定义验证时，可采用回调参数规则，如配置规则：  
 
-```
+```php
 array('name' => 'version', 'type' => 'callable', 'callback' => 'Common_Request_Version::formatVersion')
 ```
 然后，回调时将调用下面这个新增的类函数：
-```
+```php
 // $ vim ./Shop/Common/Request/Version.php
 <?php
 class Common_Request_Version {
@@ -565,7 +568,7 @@ class Common_Request_Version {
 > **温馨提示：**回调函数的签名为：```function format($value, $rule, $params)```，第一个为参数原始值，第二个为所配置的规则，第三个可选参数为配置规则中的params选项。最后应返回转换后的参数值。  
   
 还记得我们前面刚学的三级参数规则吗？虽然在应用参数配置中已配置公共version参数规则，但我们可以在具体的接口类中重新配置这个规则。把在Hello World接口中把这个版本参数类型修改成此自定义回调类型。即：  
-```
+```php
 // $ vim ./Shop/Api/Welcome.php     
 class Api_Welcome extends PhalApi_Api {
 
@@ -587,7 +590,7 @@ class Api_Welcome extends PhalApi_Api {
 
   
 以下是来自PHP官网的一些回调函数的示例：  
-```
+```php
 // Type 1: Simple callback
 call_user_func('my_callback_function'); 
 
@@ -604,7 +607,7 @@ call_user_func('MyClass::myCallbackMethod');
 > 参考：更多请参考[Callback / Callable 类型](http://php.net/manual/zh/language.types.callable.php)。  
 
 所以上面的callback也可以配置成：  
-```
+```php
 'callback' => array('Common_Request_Version', 'formatVersion')
 ```
 
@@ -613,7 +616,7 @@ call_user_func('MyClass::myCallbackMethod');
 
 #### (1) 如何开启过滤器进行签名验证？  
 当需要开启过滤器，只需要注册```DI()->filter```即可。在初始化文件init.php中去掉以下注释便可启用默认的签名验证服务。  
-```
+```php
 // $ vim ./Public/init.php
 // 签名验证服务
 DI()->filter = 'PhalApi_Filter_SimpleMD5';
@@ -679,7 +682,7 @@ version=1.2.3
 细心的读者会发现，对于默认的接口服务Default.Index是不需要进行签名验证的，这是因为在接口服务白名单中进行了配置。对于配置了白名单的接口服务，将不会触发过滤器的调用。  
 
 接口服务白名单配置是：```app.service_whitelist```，即配置文件```./Config/app.php```里面的```service_whitelist```配置，其默认值是：  
-```
+```php
     'service_whitelist' => array(
         'Default.Index',
     ),
@@ -698,7 +701,7 @@ version=1.2.3
 如果有多个生效的规则，按短路判断原则，即有任何一个白名单规则匹配后就跳过验证，不触发过滤器。  
   
 以下是更多的示例：  
-```
+```php
     'service_whitelist' => array(
         '*.Index',           // 全部的Index方法
         'Test.*',            // Api_Test的全部方法
@@ -726,7 +729,7 @@ version=1.2.3
 虽然我们约定统一使用```?service=Class.Action```的格式来传递接口服务名称，但如果项目有需要，也可以采用其他方式来传递。例如使用斜杠而非点号进行分割：```?service=Class/Action```，再进一步，使用r参数，即最终接口服务的参数格式为：```?r=Class/Action```。  
 
 如果需要采用其他传递接口服务名称的方式，则可以重写```PhalApi_Request::getService()```方法。以下是针对改用斜杠分割、并换用r参数名字的实现示例：  
-```
+```php
 // $ vim ./Shop/Common/Request/Ch1.php
 <?php
 
@@ -745,7 +748,7 @@ class Common_Request_Ch1 extends PhalApi_Request {
 ```
 
 实现好自定义的请求类后，需要在项目的入口文件```./Public/shop/index.php```进行注册。  
-```
+```php
 // $ vim ./Public/shop/index.php
 //装载你的接口
 DI()->loader->addDirs('Shop');
@@ -755,7 +758,7 @@ DI()->request = new Common_Request_Ch1();
 
 这样，除了原来的请求方式，还可以这样请求接口服务。  
 
-表2-5 使用?r=Class/Action格式定制后的方式
+表2-5 使用```?r=Class/Action```格式定制后的方式
 
 
 原来的方式|现在的方式
@@ -796,13 +799,12 @@ DI()->request = new Common_Request_Ch1();
 主数据源是指作为默认接口参数来源的数据源，即在配置了接口参数规则后，PhalApi会比主数据源提取相应的参数从而进行验证、检测和转换等。默认情况下，使用$_REQUEST作为主数据源，即同时支持$_GET和$_POST参数。但在其他场景如单元测试，或者使用非HTTP/HTTPS协议时，则需要定制主数据源，以便切换到其他的途径。  
 
 指定主数据源有两种方式，一种是简单地在初始化DI()->request请求服务时通过PhalApi_Request的构造函数参数来指定。例如，假设要强制全部参数使用POST方式，那么可以：  
-```
-//vim ./Public/index.php
+```php
 DI()->request = new PhalApi_Request($_POST); 
 ```
 
 又或者，在单元测试中，我们经常看到这样的使用场景：  
-```
+```php
 // 模拟测试数据
 $data = array(...);
 DI()->request = new PhalApi_Request($data);
@@ -812,8 +814,9 @@ DI()->request = new PhalApi_Request($data);
 
 另一种方式是稍微复杂一点的，是为了应对更复杂的业务场景，例如出于安全性考虑需要对客户端的数据包进行解密。这时需要重写并实现```PhalApi_Request::genData($data)```方法。其中参数```$data```即上面的构造函数参数，未指定时为NULL。    
 
-假设，我们现在需要把全部的参数base64编码序列化后通过$_POST['data']来传递，则相应的解析代码如下。首先，先定义自己的扩展请求类，在里面完成对称解析的动作：  
-```
+假设，我们现在需要把全部的参数base64编码序列化后通过```$_POST['data']```来传递，则相应的解析代码如下。首先，先定义自己的扩展请求类，在里面完成对称解析的动作：  
+```php
+// $ vim ./Shop/Common/Request/Base64Data.php
 <?php
 class Common_Request_Base64Data extends PhalApi_Request {
 
@@ -827,7 +830,8 @@ class Common_Request_Base64Data extends PhalApi_Request {
 }
 ```
 接着在./Public/shop/index.php项目入口文件中重新注册请求类，即添加以下代码。  
-```
+```php
+// $ vim ./Public/shop/index.php
 //重新注册request
 DI()->request = 'Common_Request_Base64Data'; 
 ```
@@ -851,7 +855,7 @@ $this->header   | $_SERVER['HTTP_X']
 $this->cookie   | $_COOKIE                   
  
 当需要对这些备用数据源进行定制时，可以重写并实现PhalApi_Request类的构造函数，在完成对父类的初始化后，再补充具体的初始化过程。如对于需要使用post_raw数据作为POST数据的情况，可以：  
-```
+```php
 <?php
 class My_Request_PostRaw extends PhalApi_Request{
     public function __construct($data = NULL) {
@@ -864,7 +868,7 @@ class My_Request_PostRaw extends PhalApi_Request{
 以此类推，还可以定制```$this->get```，```$this->request```等其他备用数据源，比如进行一些前置的XSS过滤。  
 
 最后，在接口参数规则配置时，便可使用source配置来定制后的备用数据源。如指定用户在登录时，用户名使用$_GET、密码使用$_POST。  
-```
+```php
 public function getRules() {
     return array(
         'login' => array(
@@ -874,14 +878,14 @@ public function getRules() {
     );
 }
 ```
-这样，PhalApi框架就会从$_GET中提取```username```参数，从$_POST中提取```password```参数。
+这样，PhalApi框架就会从$_GET中提取username参数，从$_POST中提取password参数。
 
  + **如何扩展其他数据源？**  
 
 其他数据源是除了上面的主数据源和备用数据源以外的数据源。当需要使用其他途径的数据源时，可进行扩展支持。  
 
 若需要扩展项目自定义的映射关系，则可以重写```PhalApi_Request::getDataBySource($source)```方法，如：  
-```
+```php
 // $ vim ./Shop/Common/Request/Stream.php
 <?php
 class My_Request_Stream extends PhalApi_Request {
@@ -897,7 +901,7 @@ class My_Request_Stream extends PhalApi_Request {
 
 ```
 然后，便可在项目中这样配置使用二进制流的数据源。  
-```
+```php
 // 从二进制流中获取密码
 'password' => array('name' => 'password', 'source' => 'stream'),
 ```
@@ -906,36 +910,37 @@ class My_Request_Stream extends PhalApi_Request {
 当PhalApi提供的参数类型不能满足项目接口参数的规则验证时，除了使用callable回调类型外，还可以扩展PhalApi_Request_Formatter接口来定制项目需要的参数类型。  
   
 和前面的定制类似，主要分两步：  
+
  + 第1步、扩展实现PhalApi_Request_Formatter接口
  + 第2步、在DI注册新的参数类型
   
 下面以大家所熟悉的邮件类型为例，说明扩展的步骤。  
   
 首先，我们需要一个实现了邮件类型验证的功能类：  
-```
+```php
 // vim ./Shop/Common/Request/Email.php
 <?php
 class Common_Request_Email implements PhalApi_Request_Formatter {
 
-	public function parse($value, $rule) {
-		if (!preg_match('/^(\w)+(\.\w+)*@(\w)+((\.\w+)+)$/', $value)) {
-			throw new PhalApi_Exception_BadRequest('邮箱地址格式错误');
-		}
+    public function parse($value, $rule) {
+        if (!preg_match('/^(\w)+(\.\w+)*@(\w)+((\.\w+)+)$/', $value)) {
+            throw new PhalApi_Exception_BadRequest('邮箱地址格式错误');
+        }
 
-		return $value;
-	}
+        return $value;
+    }
 }  
 ```
   
 然后，在项目入口文件进行注册。注册时，服务名称格式为：_formatter + 参数类型名称（首字母大写，其他字母小写），即：  
-```
+```php
 // $ vim ./Public/shop/index.php
 DI()->_formatterEmail = 'Common_Request_Email';
 ```
 若不想手动注册，希望可以自动注册，扩展的类名格式须为：PhalApi_Request_Formatter_{类型名称}。  
 
 最后，就可以像其他类型那样使用自己定制的参数类型了。新的参数类型为email，即：```'type' => 'email',```。
-```
+```php
 array('name' => 'user_email', 'type' => 'email')
 ```
    
@@ -969,15 +974,15 @@ callback|_formatterCallback| 回调格式化服务
 现以大家熟悉的微信公众号开发平台的验签为例，进行说明。  
 
 微信的加密/校验流程如下：  
-```
-1. 将token、timestamp、nonce三个参数进行字典序排序
-2. 将三个参数字符串拼接成一个字符串进行sha1加密
-3. 开发者获得加密后的字符串可与signature对比，标识该请求来源于微信
-```
+
+ + 1、 将token、timestamp、nonce三个参数进行字典序排序
+ + 2、将三个参数字符串拼接成一个字符串进行sha1加密
+ + 3.、开发者获得加密后的字符串可与signature对比，标识该请求来源于微信
+
 > 参考：以上内容摘自[接入指南 - 微信公众平台开发者文档](http://mp.weixin.qq.com/wiki/17/2d4265491f12608cd170a95559800f2d.html)。  
 
 首先，需要实现过滤器接口```PhalApi_Filter::check()```。通常我们约定返回ret = 402时表示验证失败，所以当签名失败时，我们可以返回ret = 402以告知客户端签名不对。根据微信的检验signature的PHP示例代码，我们可以快速实现自定义签名规则，如：
-```
+```php
 //$ vim ./Shop/Common/Request/WeiXinFilter.php
 <?php
 
@@ -999,11 +1004,10 @@ class Common_Request_WeiXinFilter implements PhalApi_Filter {
         }
     }
 }
-
 ```
 
 随后，我们只需要再简单地注册一下过滤器服务即可，在对应项目的入口文件index.php中添加：  
-```
+```php
 //$ vim ./Public/shop/index.php 
 // 微信签名验证服务
 DI()->filter = 'Common_Request_WeiXinFilter';
@@ -1050,7 +1054,7 @@ ret字段是返回状态码，200表示成功；data字段是项目提供的业�
 业务数据data为接口和客户端主要沟通对接的数据部分，可以为任何类型，由接口开发人员定义定义。但为了更好地扩展、向后兼容，建议都使用可扩展的集合形式，而非原生类型。也就是说，应该返回一个数组，而不应返回整型、布尔值、字符串这些基本类型。所以，Hello Wolrd接口服务返回的数据类型是不推荐的，因为返回的是整型。  
 
 业务数据主要是在Api层中返回，即对应接口类的方法的返回结果。如下面的默认接口服务```?service=Default.Index```的实现代码。  
-```
+```php
 // $ vim ./Shop/Api/Default.php
 <?php
 class Api_Default extends PhalApi_Api {
@@ -1089,7 +1093,7 @@ class Api_Default extends PhalApi_Api {
 非法请求是由客户端不正确调用引起的，如请求的接口服务不存在，或者接口参数提供错误，或者验证失败等等。当这种情况发生时，客户端开发人员需要按相应的错误提示进行调整，再重新尝试请求。 
 
 当需要返回4XX系列错误码时，可以在项目中抛出非法请求异常PhalApi_Exception_BadRequest。例如前面过滤器中进行签名验证失败后，会抛出以下异常：  
-```
+```php
 throw new PhalApi_Exception_BadRequest('wrong sign', 1);
 ```
 PhalApi_Exception_BadRequest构造函数的第一个参数，是返回给客户端的错误提示信息，对应下面将讲到的msg字段。第二个参数是返回状态码的叠加值，也就是说最终的ret状态码都会在400的基数上加上这个叠加值，即：401 = 400 + 1。
@@ -1108,13 +1112,13 @@ PhalApi_Exception_BadRequest构造函数的第一个参数，是返回给客户�
  + 500：服务器内部错误
 
 从上面，可以归结出状态码产生的时机。  
-![](images/ch-2-ret-happen.jpg)  
 
-图2-1 各状态码产生的时机
+![图2-1 各状态码产生的时机](http://7xiz2f.com1.z0.glb.clouddn.com/ch-2-ret-happen.jpg)
 
-很多时候，很多业务场景，客户端在完成一个接口请求并获取到所需要的数据后，需要进行不同的处理的。 
- 
-* 就登录来说，当登录失败时，可能需要知道：
+图2-1 各状态码产生的时机  
+
+很多时候，很多业务场景，客户端在完成一个接口请求并获取到所需要的数据后，需要进行不同的处理的。就登录来说，当登录失败时，可能需要知道：
+
 * 是否用户名不存在？
 * 是否密码错误？
 * 是否已被系统屏蔽？
@@ -1132,7 +1136,7 @@ PhalApi_Exception_BadRequest构造函数的第一个参数，是返回给客户�
 
 这样，客户端在获取到接口返回的数据后，先统一判断ret是否正常响应并正常返回结果，即ret = 200；若是，则再各自判断操作状态码code是否为0，若不为0，则提示相应的文案并进行相应的引导，若为0，则走正常流程！  
 
-总而言之，最外层的ret状态码是针对技术开人员的，是用于开发阶段的。而data中的操作状态码，如code，是面向最终用户的，是用于生产阶段的。  
+总而言之，最外层的ret状态码是针对技术开人员的，是用于开发阶段的。而data中的操作状态码，如code，是面向最终用户的，是用于产品阶段的。  
 
 #### (3) 错误提示信息 msg
 
@@ -1141,7 +1145,7 @@ PhalApi_Exception_BadRequest构造函数的第一个参数，是返回给客户�
 但对于服务端的异常，出于对接口隐私的保护，框架在错误信息时没有过于具体地描述；相反，对于客户端的异常，由会进行必要的说明，以提醒客户端该如何进行调用调整。  
 
 此外，我们根据需要可以考虑是否需要进行国际化的翻译。如果项目在可预见的范围内需要部署到国外时，提前做好翻译的准备是很有帮助的。例如前面的签名失败时，可以将异常错误信息进行翻译后再返回。  
-```
+```php
 throw new PhalApi_Exception_BadRequest(T('wrong sign'), 1);
 ```
 
@@ -1150,7 +1154,7 @@ throw new PhalApi_Exception_BadRequest(T('wrong sign'), 1);
 当使用的是HTTP/HTTPS协议时，并且需要设置头部header时，可以使用```PhalApi_Response::addHeaders()```进行设置。对于JSON格式的返回默认设置的头部有：```Content-Type:"application/json;charset=utf-8"```。  
 
 更多设置HTTP头部信息的示例如下：  
-```
+```php
 // 设置允许指定的域名跨域访问
 DI()->response->addHeaders('Access-Control-Allow-Origin', 'www.phalapi.net');
 
@@ -1176,7 +1180,7 @@ DI()->response->addHeaders('Cache-Control, 'max-age=600, must-revalidate');
   
 当然，我们可希望可以消除语义上的鸿沟，以便在接口服务开发上有一个很好地共识。  
   
-同时，**JSON + ret-data-msg** 返回格式也是一种领域特定的格式，它更多是为app多端获取业务数据而制作的规范。虽然它不是很完美，不具备自描述消息，也没有资源链接的能力，但我们认为它是一种恰到好处的格式。在基于JSON通用格式的基础上，加以 **ret-data-msg** 的约束，它很好地具备了统一性，从而降低门槛，容易理解。  
+同时，JSON + ret-data-msg返回格式也是一种领域特定的格式，它更多是为app多端获取业务数据而制作的规范。虽然它不是很完美，不具备自描述消息，也没有资源链接的能力，但我们认为它是一种恰到好处的格式。在基于JSON通用格式的基础上，加以ret-data-msg的约束，它很好地具备了统一性，从而降低门槛，容易理解。  
 
 ### 2.2.4 在线调试
 
@@ -1194,7 +1198,6 @@ DI()->response->addHeaders('Cache-Control, 'max-age=600, must-revalidate');
  + 更好的做法：```&__phalapi_debug__=202cb962ac59075b964b07152d234b70```  
   
 #### (2) 调试信息有哪些？  
-> **温馨提示：**调试信息仅当在开启调试模式后，才会返回并显示。  
   
 正常响应的情况下，当开启调试模式后，会返回多一个```debug```字段，里面有相关的调试信息。如下所示：  
 ```
@@ -1211,6 +1214,7 @@ DI()->response->addHeaders('Cache-Control, 'max-age=600, must-revalidate');
     }
 }
 ```
+> **温馨提示：**调试信息仅当在开启调试模式后，才会返回并显示。  
 
 在发生未能捕捉的异常时，并且开启调试模式后，会将发生的异常转换为对应的结果按结果格式返回，即其结构会变成以下这样：  
 ```
@@ -1229,8 +1233,8 @@ DI()->response->addHeaders('Cache-Control, 'max-age=600, must-revalidate');
 }
 ```
 
- + **查看全部执行的SQL语句**
-
+ + **查看全部执行的SQL语句**  
+ 
 debug.sqls中会显示所执行的全部SQL语句，由框架自动搜集并统计。最后显示的信息格式是：  
 ```
 [序号 - 当前SQL的执行时间ms]所执行的SQL语句及参数列表
@@ -1241,8 +1245,8 @@ debug.sqls中会显示所执行的全部SQL语句，由框架自动搜集并统�
 ```
 表示是第一条执行的SQL语句，消耗了0.32毫秒，SQL语句是```SELECT * FROM tbl_user WHERE (id = ?);```，其中参数是1。  
   
- + **查看自定义埋点信息**  
-
+ + **查看自定义埋点信息**   
+ 
 debug.stack中埋点信息的格式如下：  
 ```
 [#序号 - 距离最初节点的执行时间ms - 节点标识]代码文件路径(文件行号)
@@ -1252,7 +1256,7 @@ debug.stack中埋点信息的格式如下：
 [#0 - 0ms]/path/to/PhalApi/Public/index.php(6)
 ```
 表示，这是第一个埋点（由框架自行添加），执行时间为0毫秒，所在位置是文件```/path/to/PhalApi/Public/index.php```的第6行。即第一条的埋点发生在框架初始化时：  
-```
+```php
 // $ vim ./Public/init.php
 if (DI()->debug) {
     // 启动追踪器
@@ -1260,9 +1264,8 @@ if (DI()->debug) {
     ... ...
 }
 ```
-  
 与SQL语句的调试信息不同的是，自定义埋点则需要开发人员根据需要自行纪录，可以使用全球追踪器```DI()->tracer```进行纪录，其使用如下：  
-```
+```php
 // 添加纪录埋点
 DI()->tracer->mark();
 
@@ -1273,7 +1276,7 @@ DI()->tracer->mark('DO_SOMETHING');
 > 参考：用于性能分析的[XHprof扩展类库](http://git.oschina.net/dogstar/PhalApi-Library/tree/master/Xhprof)。  
   
 例如在Hello World接口服务中，添加一个操作埋点。  
-```
+```php
 // $ vim ./Shop/Api/Welcome.php
     public function say() {
         DI()->tracer->mark('欢迎光临');
@@ -1305,7 +1308,7 @@ DI()->tracer->mark('DO_SOMETHING');
 当有未能捕捉的接口异常时，开启调试模式后，框架会把对应的异常转换成对应的返回结果，并在debug.exception中体现。而不是像正常情况直接500，页面空白。这些都是由框架自动处理的。  
   
 继续上面的示例，让我们故意制造一些麻烦，手动抛出一个异常。  
-```
+```php
 // $ vim ./Shop/Api/Welcome.php
     public function say() {
         DI()->tracer->mark('欢迎光临');
@@ -1345,7 +1348,7 @@ DI()->tracer->mark('DO_SOMETHING');
 当需要添加其他调试信息时，可以使用```DI()->response->setDebug()```进行添加。  
   
 如： 
-```
+```php
 $x = 'this is x';
 $y = array('this is y');
 DI()->response->setDebug('x', $x);
@@ -1365,13 +1368,54 @@ DI()->response->setDebug('y', $y);
 #### (1) 调整响应结构
 默认返回的是ret字段、data字段和msg字段。如果需要使用其他字段名称，可以重写```PhalApi_Response::getResult()```，然后重新注册即可。请在父类返回的基础上再作调整，以保持对调试模式和后续新增基础功能的支持。 
 
-重写并实现后，需要重新注册```DI()->response```服务，这里不再赘述。  
+例如，类似微信开放平台的接口一样，成功时只返回data字段，失败时则只返回ret字段和msg字段，并分别改名为status字段和errormsg字段。  
+```php
+// $ vim ./Shop/Common/Response/Result.php
+<?php
+class Common_Response_Result extends PhalAPi_Response_JSON {
+
+    public function getResult() {
+        $newRs = array();
+
+        $oldRs = parent::getResult();
+        if ($oldRs['ret'] >= 200 && $oldRs['ret'] <= 299) {
+            $newRs = $oldRs['data'];
+        } else {
+            $newRs['status'] = $oldRs['ret'];
+            $newRs['errormsg'] = $oldRs['msg'];
+        }
+
+        if (isset($oldRs['debug']) && is_array($newRs)) {
+            $newRs['debug'] = $oldRs['debug'];
+        }
+
+        return $newRs;
+    }
+}
+```
+
+重写并实现后，需要重新注册```DI()->response```服务，这里是在Shop项目的入口文件进行重新注册。  
+```php
+// $ vim ./Public/shop/index.php
+// 调整返回结构
+DI()->response = 'Common_Response_Result';
+```
+
+随后，再访问接口服务，便可看到返回的结构已发生变化。例如访问默认接口服务```?service=Default.Index```，会返回：  
+```
+{
+    "title": "Hello World!",
+    "content": "PHPer您好，欢迎使用PhalApi！",
+    "version": "1.4.0",
+    "time": 1495007735
+}
+```
 
 #### (2) 使用其他返回格式
 除了使用JSON格式返回外，还可以使用其他格式返回结果。  
 
 例如在部分H5混合应用页面进行异步请求的情况下，客户端需要服务端返回JSONP格式的结果，则可以这样在初始化文件./Public/init.php中去掉以下注释。  
-```
+```php
 if (!empty($_GET['callback'])) {
     DI()->response = new PhalApi_Response_JsonP($_GET['callback']);
 }
@@ -1384,7 +1428,7 @@ if (!empty($_GET['callback'])) {
 
 
 这里以扩展XML返回格式为例，简单说明。首先，添加并实现一个子类，把结果转换为XML：  
-```
+```php
 // $ vim ./Shop/Common/Response/XML.php
 <?php
 class Common_Response_XML extends PhalApi_Response {
@@ -1397,13 +1441,13 @@ class Common_Response_XML extends PhalApi_Response {
 > **温馨提示：**关于数组转XML，可参考[将PHP数组转成XML](http://www.oschina.net/code/snippet_54100_1548)，或[Convert array to XML in PHP](http://www.codexworld.com/convert-array-to-xml-in-php/)。  
 
 随后，在Shop项目的入口文件中重新注册。  
-```
+```php
 // $ vim ./Public/shop/index.php
 DI()->response = 'Common_Response_XML';
 ```
 
 再次请求Hello World接口服务时，可以看到结果已经改用XML返回。  
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 <data><ret>200</ret><data>Hello World</data><msg></msg></data>
 ```
@@ -1422,14 +1466,11 @@ DI()->response = 'Common_Response_XML';
 
 简单来说，  
 
- + **Api层**  
- 称为接口服务层，负责对客户端的请求进行响应，处理接收客户端传递的参数，进行高层决策并对领域业务层进行调度，最后将处理结果返回给客户端。  
+ + **Api层**   称为接口服务层，负责对客户端的请求进行响应，处理接收客户端传递的参数，进行高层决策并对领域业务层进行调度，最后将处理结果返回给客户端。  
 
- + **Domain层**  
- 称为领域业务层，负责对领域业务的规则处理，重点关注对数据的逻辑处理、转换和加工，封装并体现特定领域业务的规则。  
+ + **Domain层**   称为领域业务层，负责对领域业务的规则处理，重点关注对数据的逻辑处理、转换和加工，封装并体现特定领域业务的规则。  
 
- + **Model层**  
- 称为数据模型层，负责技术层面上对数据信息的提取、存储、更新和删除等操作，数据可来自内存，也可以来自持久化存储媒介，甚至可以是来自外部第三方系统。  
+ + **Model层**   称为数据模型层，负责技术层面上对数据信息的提取、存储、更新和删除等操作，数据可来自内存，也可以来自持久化存储媒介，甚至可以是来自外部第三方系统。  
 
 下面再分别展开说明。  
 
@@ -1437,7 +1478,8 @@ DI()->response = 'Common_Response_XML';
 
 在2015年大会上，我所敬仰的偶像Martin Fowler，通过下面这张Slice再次分享了何为微服务。  
 
-![](images/ch-2-micro-service.jpg)  
+![图2-2 Martin Fowler对微服务的定义](http://7xiz2f.com1.z0.glb.clouddn.com/ch-2-micro-service.jpg)  
+
 图2-2 Martin Fowler对微服务的定义  
 
 这里提到的**微服务**概念，对应PhalApi框架中的接口服务，主要体现在Api接口服务层。微服务与接口服务有些微妙的区别，但不管何种说法，我们都应该关注微服务里所提及到的这几点重要特质：  
@@ -1471,7 +1513,7 @@ Api接口服务层，主要是负责响应客户端的请求，在抽象层面�
  + 1、创建接口服务类并添加成员函数
 
 假设此获取商品快照信息服务名称为：Goods.Snapshot，则先在Shop项目的Api层创建一个新的类文件并添加一个继承自PhalApi_Api的接口服务类Api_Goods，然后添加一个成员函数```Api_Goods::snapshot()```。 
-```
+```php
 //$ vim ./Shop/Api/Goods.php
 <?php
 class Api_Goods extends PhalApi_Api {
@@ -1484,7 +1526,7 @@ class Api_Goods extends PhalApi_Api {
  + 2、描述接口服务功能
 
 接口服务的功能，可以在成员函数的标准文档注释中进行说明，并且可使用```@desc```注解进行详细说明。如下：  
-```
+```php
     /**
      * 获取商品快照信息
      * @desc 获取商品基本和常用的信息
@@ -1496,7 +1538,7 @@ class Api_Goods extends PhalApi_Api {
  + 3、配置接口参数规则
 
 参数规则的配置，则是前面所说的接口参数规则配置，需要在```Api_Goods::getRules()```成员函数中进行配置，假设这里只需要一个商品ID的参数。  
-```
+```php
     public function getRules() {
         return array(
             'snapshot' => array(
@@ -1509,7 +1551,7 @@ class Api_Goods extends PhalApi_Api {
  + 4、添加成员函数返回结果的注释
 
 最后，需要对接口返回的结果结构及字段进行说明，这部分也是在成员函数的标准文档注释中进行说明，并遵循```@return```注解的格式。假设此快照服务返回的结构格式和字段如下：    
-```
+```php
     /**
      * 获取商品快照信息
      * @return int      goods_id    商品ID
@@ -1523,7 +1565,7 @@ class Api_Goods extends PhalApi_Api {
 
 至此，我们便完成了获取商品快照信息服务的雏形，即完成了对此接口服务的定义。简单尝试请求一下：  
 ```
-curl "http://api.phalapi.net/shop/?service=Goods.Snapshot&id=1"
+$ curl "http://api.phalapi.net/shop/?service=Goods.Snapshot&id=1"
 {"ret":200,"data":null,"msg":""}
 ```
 可以看到上面定义的接口服务已经可以访问。因为还没具体实现，所以暂时没有业务数据返回。  
@@ -1535,8 +1577,10 @@ curl "http://api.phalapi.net/shop/?service=Goods.Snapshot&id=1"
 http://api.phalapi.net/shop/checkApiParams.php?service=Goods.Snapshot
 ```
 可以看到类似这样的截图效果。  
-![](images/ch-2-goods-snapshot-docs.png)  
-图2-3 Goods.Snapshot在线接口服务说明文档  
+
+![图像说明文字](http://7xiz2f.com1.z0.glb.clouddn.com/ch-2-goods-snapshot-docs.png)
+
+图2-3 接口服务Goods.Snapshot的在线说明文档  
 
 由前面创建的类和编写的代码、配置的规则以及文档注释，最终生成了这份接口文档。即使在未完成接口服务的开发情况下，通过此在线文档，使用方也能明确接口服务的功能，以及需要传递的参数和返回结果的说明，从而不影响他们的开发进度。 
 
@@ -1551,11 +1595,11 @@ http://api.phalapi.net/shop/checkApiParams.php?service=Goods.Snapshot
 $ cd ./Shop/Tests
 $ php ../../PhalApi/phalapi-buildtest ../Api/Goods.php Api_Goods ./test_env.php > ./Api/Goods_Test.php
 ```
-> **温馨提示：**关于phalapi-buildtest脚本命令的使用，详细请见后续说明。  
+> **温馨提示：**关于phalapi-buildtest脚本命令的使用，详细请见**3.6.2 phalapi-buildtest命令**。  
 
 上面主要是生成了```Goods.Snapshot```接口服务对应的测试骨架代码，并保存在文件./Api/Goods_Test.php里。然后，稍微修改完善生成的测试代码。  
-```
-$ vim ./Shop/Tests/Api/Goods_Test.php
+```php
+// $ vim ./Shop/Tests/Api/Goods_Test.php
 require_once dirname(__FILE__) . '/../test_env.php'; // 调整测试环境文件的加载
 
 ... ...
@@ -1583,7 +1627,7 @@ require_once dirname(__FILE__) . '/../test_env.php'; // 调整测试环境文件
 上面的单元测试，根据构建-执行-验证模式，对商品ID为1的信息进行验证，主要是验证是否包含goods_id、goods_name、goods_price、goods_image这四个字段。  
 
 试执行一下此单元测试，明显是失败的。  
-```
+```bash
 Tests$ phpunit ./Api/Goods_Test.php 
 
 .F
@@ -1600,7 +1644,8 @@ Failed asserting that a NULL is not empty.
 到这里，我们讲述了一个失败的故事，因为这个故事讲不下去了。但我们知道错在哪里。要想让这个故事讲得通，我们可以先简单模拟一些数据，即先讲一个假故事。  
 
 修改Goods.Snapshot接口服务的源代码，返回以下模拟的商品数据。  
-```
+```php
+// $ vim ./Shop/Api/Goods.php
     public function snapshot() {
         return array(
             'goods_id' => 1,
@@ -1615,7 +1660,8 @@ Failed asserting that a NULL is not empty.
 接下来，让我们再进一步，把这个故事讲得更真实，更动听，更丰满一点。  
 
 还记得我们Api层的职责吗？Api层主要负责请求响应、进行决策和高层的调度。下面是Goods接口层调整后的代码实现：  
-```
+```php
+// $ vim ./Shop/Api/Goods.php
     public function snapshot() {     
         $domain = new Domain_Goods();
         $info = $domain->snapshot($this->id);
@@ -1658,7 +1704,7 @@ _“类型名、方法名和参数名一起构成了一个释意接口（Intenti
 在我曾经任职的一个游戏公司里面，我常根据接口的命名来推断它的作用，但往往会倍受伤害。因为以前的开发人员没有遵守这些约定，当时的Team Leader还责怪我不能太相信这些接口的命名。然而我想，如果连自己团队的其他成员都不能相信，我们还能相信谁呢？我们是否应该反思，是否应该考虑遵守约定编程所带来的好处？任何一个问题，都不是个人的问题，而是一个团队的问题。如果我们经常不断地发生一生项目的问题而要去指责某个人时，我们又为何不从一开始就遵守约定而去避免呢？  
   
 如下面在F项目中的家庭组成员领域业务类：  
-```
+```php
 <?php
 class Domain_Group_Member {
 
@@ -1683,7 +1729,7 @@ _“规则出现且仅出现一次。”_
 在以往的开发中，我都很注意对业务规则统一提取、归纳，并在必要时进行重构。这使得我可以非常相信我所提供业务的稳定性，以及在给别人讲解时的信心。例如有一次，在一个大型的系统中，需要对某个页面跳转链接的生成规则进行调整。我跟另一位新来的同事说，这个需求只需修改一处时，他仍然很惊讶地问我：“怎么可能？！”因为他看到是这么多场景，如此多的页面，怕会有所遗漏。然而，事实证明，最终确实只需要改动一处就可以了。  
   
 类似这样的URL拼接规则，我们可以这样表示： 
-```
+```php
 <?php
 class Domain_Page_Helper {
 
@@ -1709,7 +1755,7 @@ class Domain_Page_Helper {
   
 如同其他语言一样，如果也在PHP遵循**不可变值**与**无状态**这两个用法，我们的接口系统乃至业务方都可以从中获益。  
   
-**不可变值**是指一个实体在创建后，其内部的状态是不可变更的，这样就能在系统内放心地流通使用，而无须担心有副作用。  
+不可变值是指一个实体在创建后，其内部的状态是不可变更的，这样就能在系统内放心地流通使用，而无须担心有副作用。  
   
 举个简单的例子，在我们国际交易系统中有一个金额为100 RMB的对象，表示用户此次转账的金额。如果此对象是不可变值，那么我们在系统内，无论是计算手费、日记纪录，还是转账事务或其他，我们都能信任此对象放心使用，不用担心哪里作了篡改而导致一个隐藏的致使BUG。  
   
@@ -1718,7 +1764,7 @@ class Domain_Page_Helper {
 要明白为什么在修改前需要再创建新的对象，也是很容易理解的。首先，我们保持了和基本类型一致的处理方式；其次，我们保持了概念的一致性，如坐标A(1, 2)和坐标B(1, 3)是两个不同的坐标。当坐标A发生改变，坐标A就不再是原来的坐标A，而是一个新的坐标。从哲学角度上看，这是两个不同的概念。  
 
 在PhalApi中，我们可以看到不可变值在Query对象中的应用：  
-```
+```php
 $query1 = new PhalApi_ModelQuery();
 $query1->id = 1;
 
@@ -1739,7 +1785,7 @@ PHP的运行机制，不同于长时间运行的语言或系统，PHP很少会�
 关于对实体的追踪和识别，可以使用ORM进行实体与关系数据库映射，但PhalApi弱化了这种映射，取而代之的是更明朗的处理方式，即：**无状态操作**。 
   
 因为PhalApi都是通过“空洞”的实体来获得数据，即实体无内部属性，对数据库的处理采用了**表数据入口模式** 。当我们需要获取两个用户的信息时，可以这样：
-```
+```php
 $model = new Model_User();
 $user1 = $model->get(1);  //$user1是一个数组
 $user2 = $model->get(2);
@@ -1762,7 +1808,7 @@ $users = $model->multiGet(array(1, 2));  //$users是一个二维数组，下标�
 Domain层作为Api-Domain-Model分层模式中的桥梁，主要负责处理业务规则。将值对象与无状态操作引申到Domain层，同样有处于简化我们对数据和业务规则的处理。  
   
 我们可以根据上述的家庭组成员领域类来完成类似下面功能场景的业务需求：
-```
+```php
 $domain = new Domain_Group_Member();
 
 if (!$domain->hasJoined(1, 100)) {
@@ -1816,13 +1862,13 @@ class Domain_Goods {
 Model层主要是关注技术层面的实现细节，以及需要考虑系统性能和海量数据存储等。如果数据来源于数据库，我们则需要考虑到数据库服务器的感受，保证不会有过载的请求而导致它罢工。对此，我们可以结合缓存来进行性能优化。  
 
 如，一般地：  
-```
+```php
 // 版本1：简单的获取
 $model = new Model_User();
 $rs = $model->getByUserId($userId);
 ```
 这种是没有缓存的情况，当发现有性能问题并且需要通过添加缓存来解决时，可以这样调整： 
-```
+```php
 // 版本2：使用缓存
 $key = 'userbaseinfo_' . $userId;
 $rs = DI()->cache->get($key);
@@ -1832,7 +1878,7 @@ if ($rs === NULL) {
 }
 ```
 但不建议在领域Domain层中引入缓存，因为会导致混淆Domain层的关注点，并且不便进行测试。更好是将技术层面的缓存机制处理移至Model层，保持数据获取的透明性： 
-```
+```php
 <?php
 class Model_User extends PhalApi_Model_NotORM {
 
@@ -1845,10 +1891,10 @@ class Model_User extends PhalApi_Model_NotORM {
         }
         return $rs;
     }
-```		
+```     
 
 对应地，在Domain层的调用改为：
-```
+```php
 // 版本3：使用缓存 (缓存机制封装在Model层)
 $model = new Model_User();
 $rs = $model->getByUserIdWithCache($userId);
@@ -1875,7 +1921,7 @@ $rs = $model->getByUserIdWithCache($userId);
 由于Model代理被上层的Domain领域层调用，但又依赖于下层Model层获得原始数据，所以处于Domain和Model之间。为了保持良好的项目代码层级，如果需要创建PhalApi_ModelProxy子类，建议新建一个ModelProxy目录。  
   
 如对用户基本信息的获取，我们添加了一个代理：
-```
+```php
 <?php
 class ModelProxy_UserBaseInfo extends PhalApi_ModelProxy {
 
@@ -1908,7 +1954,7 @@ $query是查询对象PhalApi_ModelQuery的实例。我们强烈建议此类实�
 此查询对象，目前包括了四个成员变量：是否读缓存、是否写缓存、主键id、时间戳。很多时候，这四个基本的变量是满足不了各项目的实际需求的，因此你可以定义你的查询子类， 以支持丰富的数据获取。如调用优酷平台接口获取用户最近上传发布的视频时，需要用户昵称、获取的数量、排序种类等。
   
 在完成了上面的工作后，让我们看下最终呈现的效果：
-```
+```php
 // 版本4：缓存 + 代理
 $query = new PhalApi_ModelQuery();
 $query->id = $userId;
@@ -1919,13 +1965,14 @@ $rs = $modelProxy->getData($query);
   
 至此，我们很好地在源数据的获取基础上，统一结合缓存策略。你会发现： **缓存节点可变、具体的源数据可变、复杂的查询亦可变** 。  
 
-![](images/ch-2-model-proxy-full.jpg)  
-图2-4 代理模式下的UML静态结构  
+![图2-4 代理模式下的UML静态结构](http://7xiz2f.com1.z0.glb.clouddn.com/ch-2-model-proxy-full.jpg)
 
+图2-4 代理模式下的UML静态结构  
    
 将此静态结构简化一下，可得到：  
 
-![](images/ch-2-model-proxy-lite.jpg)  
+![图2-5 简化后代理模式下的UML静态结构 ](http://7xiz2f.com1.z0.glb.clouddn.com/ch-2-model-proxy-lite.jpg)
+
 图2-5 简化后代理模式下的UML静态结构  
   
 这样的设计是合理的，因为缓存节点我们希望能在项目内共享，而不管是哪块的业务数据；对于具体的源数据获取明显也是不尽相同，所以也需要各自实现，同时对于同一类业务数据（如用户基本信息）则使用一样的缓存有效时间和指定格式的缓存key（通常结合不同的id组成唯一key）；最后在前面的缓存共享和同类数据的基础上，还需要支持不同数据的具体获取，因此需要查询对象。也就是说，你可以在不同的层级不同的范畴内进行自由的控制和定制。    
@@ -1948,13 +1995,13 @@ $rs = $modelProxy->getData($query);
 在项目层次，我们可以统一构造自己的查询基类，以实现对缓存的控制。  
   
 如：
-```
+```php
 <?php
 class Common_ModelQuery extends PhalApi_ModelQuery {
 
     public function __construct($queryArr = array()) {
         parent::__construct($queryArr);
-		
+        
         if (DI()->debug) {
             $this->readCache = FALSE;
             $this->writeCache = FALSE;
@@ -1966,7 +2013,7 @@ class Common_ModelQuery extends PhalApi_ModelQuery {
 这样便可以获得了接口预览和调试的能力。  
 
 最后，让我们继续来完成前面的商品快照信息获取的实现。为简单起见，假设我们的商品数据不存在数据库，而是固定编码在代码中，并其数据和实现如下：  
-```
+```php
 //$ vim ./Shop/Model/Goods.php
 <?php
 class Model_Goods {
@@ -1992,7 +2039,7 @@ class Model_Goods {
 }
 ```
 这里硬编码了两个商品：iPhone 7 Plus和iPhone 6 Plus。然后执行一下最初的单元测试，发现已经可以通过测试了。  
-```
+```bash
 $ phpunit ./Api/Goods_Test.php 
 ... ...
 OK (2 tests, 5 assertions)
@@ -2009,6 +2056,7 @@ OK (2 tests, 5 assertions)
 为了能让大家更为明确Api接口层的职责所在，我们建议：  
   
 Api接口服务层应该做：  
+
  + 应该：对用户登录态进行必要的检测
  + 应该：控制业务场景的主流程，创建领域业务实例，并进行调用
  + 应该：进行必要的日记纪录
@@ -2016,27 +2064,31 @@ Api接口服务层应该做：
  + 应该：调度领域业务层
   
 Api接口服务层不应该做：  
+
  + 不应该：进行业务规则的处理或者计算
  + 不应该：关心数据是否使用缓存，或进行缓存相关的直接操作
  + 不应该：直接操作数据库
  + 不应该：将多个接口合并在一起
    
 Domain领域业务层应该做：  
+
  + 应该：体现特定领域的业务规则  
  + 应该：对数据进行逻辑上的处理  
  + 应该：调度数据模型层或其他领域业务层
 
 Domain领域业务层不应该做：  
+
  + 不应该：直接实现数据的操作，如添加并实现缓存机制  
 
 Model数据模型层应该：  
+
  + 应该：进行数据库的操作
  + 应该：实现缓存机制  
 
 
 在明确了上面应该做的和不应该做的，并且也完成了接口的定义，还有验收测序驱动开发的场景准备后，相信这时，即使是新手也可以编写出高质量的接口代码。因为他会受到约束，他知道他需要做什么，主要他按照限定的开发流程和约定稍加努力即可。  
   
-如果真的这样，相信我们也就慢慢能体会到 **精益开发** 的乐趣。  
+如果真的这样，相信我们也就慢慢能体会到精益开发的乐趣。  
 
 至于调用关系，整体上讲，应根据从Api接口层、Domain领域层再到Model数据源层的顺序进行开发。  
   
@@ -2048,7 +2100,10 @@ Model数据模型层应该：
  + Model层调用Model层
    
 如果用一张图来表示，则是：  
-![](images/ch-2-api-domain-model-call.png)  
+
+![图2-6 ADM调用关系](http://7xiz2f.com1.z0.glb.clouddn.com/ch-2-api-domain-model-call.png)
+
+图2-6 ADM调用关系
   
 为了更明确调用的关系，以下调用是**错误**的：  
   
@@ -2066,20 +2121,24 @@ Model数据模型层应该：
 
 先来简单回顾一下中学时间所学的化学方程式。  
 
-![](images/ch-2-co-ho-hco.png)  
-图2-6 一条化学方程式  
+![图2-7 一条化学方程式](http://7xiz2f.com1.z0.glb.clouddn.com/![](images/ch-2-co-ho-hco.png)  
+)
+
+图2-7 一条化学方程式  
 
 上面是指二氧化碳和水在加热情况下可生成碳酸。化学方程式左边是反应前的分子，右边是反应后的产物。  
 
 类似地，在我们系统这个大环境下，在不同的场景下也会有不同的原材料，再根据不同的目的生成相应的数据产出物。这与化学反应有是点相似的。如果我们把数据的加工、处理看作化学的反应过程，而把数据源当作反应前的物质、把最终的页面数据比作化学的产物，我们可以得到这样一个类比：  
 
-![](images/ch-2-hua-xue-fang-cheng-si-like.png)  
-图2-7 类似化学方程式的数据处理  
+![图2-8 类似化学方程式的数据处理](http://7xiz2f.com1.z0.glb.clouddn.com/ch-2-hua-xue-fang-cheng-si-like.png)
+
+图2-8 类似化学方程式的数据处理  
 
 这是一种以分子/原子的视角来看待数据，由此我们可以知道每份数据都会有其本身的一些特性，如：大小、稳定程度、名字、组成的结构等。若按数据的稳定程度分轨道划分，我们可以看到原来混沌的数据分布将显得有序、可视化。  
 
-![](images/ch-2-compare-data.png)  
-图2-8 划分前后的数据分布   
+![图2-9 划分前后的数据分布](http://7xiz2f.com1.z0.glb.clouddn.com/ch-2-compare-data.png)
+
+图2-9 划分前后的数据分布   
 
 由分子组成的化学物质，有活泼、稳定之分。越活泼的物质变化越快，反之，越稳定的物质变化缓慢，可以放置很长一段时间。同样，对于接口服务系统中的数据，有的需要频繁更新甚至实时更新，如商品库存；有的则相对稳定，不需要频繁更新并在业务上可以接受一定时间的延时，如商品的信息；有的甚至非常稳定，通常很长的时间内都不会发生变化，如全站的通用的开关配置。 
 
@@ -2087,8 +2146,9 @@ Model数据模型层应该：
 
 通过上面新视角的划分，结合数据的使用场景，我们可以得到数据稳定-访问象限分布图。  
 
-![](images/ch-2-xiang-xian.png)  
-图2-9 数据稳定-访问象限分布图  
+![图2-10 数据稳定-访问象限分布图](http://7xiz2f.com1.z0.glb.clouddn.com/ch-2-xiang-xian.png)
+
+图2-10 数据稳定-访问象限分布图  
 
 在进行了这么多理论的说明后，让我们结合个示例来实践一下。  
 
@@ -2099,7 +2159,7 @@ Model数据模型层应该：
  + 重量级缓存，同时使用本地和集群服务器的高效缓存，特点是可共享但有网络I/O消耗  
 
 则可以创建三个对应的模型代理目录，如下：  
-```
+```bash
 $ tree ./Shop/ModelProxy/
 ./Shop/ModelProxy/
 ├── Heavy      # 重量级缓存
@@ -2124,7 +2184,7 @@ $ tree ./Shop/ModelProxy/
 站点配置|轻量级缓存|适合使用单机缓存，且允许回源到文件
 
 在Model层的目录里，默认情况下，数据来源于数据库。如果有其他来源的数据，可在Model目录里面添加子目录，以示区分。如添加以下目录：  
-```
+```bash
 $ tree ./Shop/Model/
 ./Shop/Model/
 ├── Connector # 连接器，与外部接口进行通信
@@ -2132,21 +2192,21 @@ $ tree ./Shop/Model/
 ```
 
 然后，在Model相应的子目录里实现对应业务数据的原始操作。假设最终的实现文件列表如下：  
-```
+```bash
 ./Shop/Model/Connector/Recommend.php # 推荐商品
 ./Shop/Model/File/SiteConfig.php     # 站点配置
 ./Shop/Model/Goods.php               # 商品信息
 ```
 
 接着，在ModelProxy层，各自添加相应的缓存策略，如下：  
-```
+```bash
 ./Shop/ModelProxy/Heavy/Goods.php        # 重量级的商品信息
 ./Shop/ModelProxy/Light/SiteConfig.php   # 轻量级的站点配置
 ./Shop/ModelProxy/Realtime/Recommend.php # 实时的推荐商品
 ```
 
 至此，我们便得到了一个清晰的数据划分。对于每个业务数据，我们都能一种更细粒度上的管理和分布视角。同时对于何种业务数据使用何种缓存策略也一目了解。当然，这里只是作为一个示例，实际项目中，还应实现完善各种缓存策略的基类，以及添加类似下面这样的查询类。  
-```
+```bash
 ./Shop/ModelProxy/Query/Goods.php      # 商品信息查询参数类
 ./Shop/ModelProxy/Query/Recommond.php  # 推荐商品查询参数类
 ./Shop/ModelProxy/Query/SiteConfig.php # 站点配置查询参数类
@@ -2161,7 +2221,7 @@ $ tree ./Shop/Model/
 ### 2.4.1 配置的简单读取
 
 默认情况下，项目里会有以下三个配置文件：  
-```
+```bash
 $ tree ./Config/
 ./Config/
 ├── app.php
@@ -2171,14 +2231,14 @@ $ tree ./Config/
 其中app.php为项目应用配置；dbs.php为分布式存储的数据库配置；sys.php为不同环境下的系统配置。  
 
 在初始化文件，默认已注册配置组件服务。  
-```
+```php
 //$ vim ./Public/init.php
 // 配置
 DI()->config = new PhalApi_Config_File(API_ROOT . '/Config');
 ```
   
 假设app.php配置文件里有：  
-```
+```php
 return array(
     'version' => '1.1.1',
     'email' => array(
@@ -2188,9 +2248,9 @@ return array(
 ```
   
 可以分别这样根据需要获取配置：
-```
+```php
 // app.php里面的全部配置
-DI()->config->get('app');                 //返回：array( ... ... )
+DI()->config->get('app');                //返回：array( ... ... )
 
 // app.php里面的单个配置
 DI()->config->get('app.version');        //返回：1.1.1
@@ -2225,7 +2285,7 @@ PHP代码 --> $_ENV环境配置 --> Linux服务器环境变量/etc/profile
 我们有这样不同的入口，客户端在测试时，只需要将入口路径改成：```/shop/test.php?service=Class.Action```，而在打包发布时只需要将入口路径改成：```/shop/?service=Class.Action```即可，也就是将test.php去掉。  
 
 而在服务端，仅需要在这些不同的入口文件，修改一下配置文件目录路径即可：
-```
+```php
 //$ vim ./Public/shop/test.php
 DI()->config = new PhalApi_Config_File(API_ROOT . '/Config/Test');
 ```
@@ -2236,7 +2296,7 @@ DI()->config = new PhalApi_Config_File(API_ROOT . '/Config/Test');
 但个人最为建议的还是在**持续集成**下进行配置管理。因为首先，持续集成中的发布应该是经常性的，且应该是自动化的。所以，既然有自动化的支持，我们也应该及早地将配置纳入其中管理。  
   
 配置文件不同只要是环境不同，而环境不同所影响的配置文件通常只有sys.php和dbs.php；为此，我们为测试环境和生产环境准备了各自的配置文件，而在发布时自动选择所需要的配置文件。一般地，我们建议生产环境的配置文件以**.prod**结尾。所以，这时我们的配置文件可能会是这样：
-```
+```bash
 $ tree ./Config/
 ./Config/
 ├── app.php
@@ -2250,8 +2310,7 @@ $ tree ./Config/
 再通过发布工具，我们就可以对不同环境的配置文件进行快速选择了。这里以phing为例，说明一下相关的配置和效果。  
   
 在Phing的配置文件build.xml中，在生产环境发布过程中，我们将配置文件进行了替换。
-```javascript
-//$ vim ./build.xml 
+```xml
         <copy 
             file="./Config/dbs.php.prod" 
             tofile="./Config/dbs.php" 
@@ -2263,7 +2322,7 @@ $ tree ./Config/
 ```
   
 执行phing发布后，将会看到对应的这样提示：
-```javascript
+```bash
      [copy] Copying 1 file to /path/to/PhapApi/Config
      [copy] Copying 1 file to /path/to/PhapApi/Config
 ```
@@ -2275,15 +2334,14 @@ Yaconf扩展需要PHP 7及以上版本，并且需要先安装Yaconf扩展。
   
 安装部署完成后，便和正常的配置一样使用。
 
-假设我们已经有了这样的配置文件：  
+假设我们已经有了这样的配置文件 ./test.ini：  
 ```
-$ vim ./test.ini
 name="PhalApi"
 version="1.3.1"
 ```
 
 则可以这样使用：  
-```
+```php
 // 注册
 DI()->config = new PhalApi_Config_Yaconf();
 
@@ -2297,7 +2355,6 @@ var_dump(DI()->config->has('foo'));
 需要注意的是，使用Yaconf扩展与默认的文件配置的区别的是，配置文件的目录路径以及配置文件的格式。当然也可以把Yaconf扩展的配置目录路径设置到PhalApi的配置目录./Config。  
 
 ### 2.4.4 扩展你的项目
-
 
 #### (1) 扩展其他配置读取方式
 
@@ -2336,7 +2393,7 @@ NotORM是一个优秀的开源PHP类库，可用于操作数据库。PhalApi的�
  + **局部获取**：在继承PhalApi_Model_NotORM的子类中使用：```$this->getORM()```
 
 第一种全局获取的方式，可以用于任何地方，这是因为我们已经在初始化文件中注册了```DI()->notorm```这一服务。  
-```
+```php
 // 数据操作 - 基于NotORM
 DI()->notorm = new PhalApi_DB_NotORM(DI()->config->get('dbs'), DI()->debug);
 ```
@@ -2344,7 +2401,7 @@ DI()->notorm = new PhalApi_DB_NotORM(DI()->config->get('dbs'), DI()->debug);
 然后，再添加表名属性，即可使用相应的数据库表实例了。如user表的实例：```DI()->notorm->user```。  
 
 第二种局部获取的方式，仅限用于继承PhalApi_Model_NotORM的子类中。首先需要实现相应的Model子类，通常一个表对应一个Model子类。例如为user表创建相应的Model类。  
-```
+```php
 <?php
 class Model_User extends PhalApi_Model_NotORM {
     protected function getTableName($id) {
@@ -2364,7 +2421,7 @@ class Model_User extends PhalApi_Model_NotORM {
 使用NotORM时，值得注意的是，NotORM的表实例是有内部状态的，即可以保持操作状态。故而在开发过程中，需要特别注意何时需要保留状态（使用同一个实例），何时不需要保留状态（使用不同的实例）。 
 
 希望保留状态时，需要使用同一个实例。例如： 
-```
+```php
 // 获取一个新的实例
 $user = DI()->notorm->user;  
 $user->where('age > ?', 18);
@@ -2375,7 +2432,7 @@ $user->where('name LIKE ?', '%dog%');
 可以看到，第二次查询后，会把前面的查询条件也累加上。  
 
 不希望保留状态时，需要每次使用新的实例。例如： 
-```
+```php
 // 获取一个新的实例
 $user = DI()->notorm->user;  
 $user->where('age > ?', 18);
@@ -2416,7 +2473,7 @@ key|表主键
 map|数据库实例映射关系，可配置多组。每组格式为：```array('db' => 服务器标识, 'start' => 开始分表标识, 'end' => 结束分表标识)```，start和end要么都不提供，要么都提供  
 
 例如默认数据库配置为：  
-```
+```php
 return array(
     /**
      * DB数据库服务器集群
@@ -2426,7 +2483,7 @@ return array(
             'host'      => 'localhost',             //数据库域名
             'name'      => 'phalapi',               //数据库名字
             'user'      => 'root',                  //数据库用户名
-            'password'  => '',	                    //数据库密码
+            'password'  => '',                    //数据库密码
             'port'      => '3306',                  //数据库端口
             'charset'   => 'UTF8',                  //数据库字符集
         ),
@@ -2484,7 +2541,7 @@ return array(
   
 
 在明白了Model基类的背景后，再来了解其具体的操作和如何继承会更有意义。具体的操作与数据表的结构相关，在约定编程下：即每一个表都有一个主键（通常为id，也可以自由配置）以及一个序列化LOB字段ext_data。我们很容易想到Model接口的定义。为了突出接口签名，注释已移除，感兴趣的同学可查看源码。  
-```
+```php
 interface PhalApi_Model {
     
     public function get($id, $fields = '*');
@@ -2505,7 +2562,7 @@ interface PhalApi_Model {
  + **不使用Model基类的写法**
   
 下面是不使用Model基数的实现代码：  
-```
+```php
 <?php
 class Model_User {
 
@@ -2516,7 +2573,7 @@ class Model_User {
 ```
 
 获取ID为1的用户信息，对应的调用为：  
-```
+```php
 $model = new Model_User();
 $rs = $model->getByUserId(1);
 ```
@@ -2524,20 +2581,20 @@ $rs = $model->getByUserId(1);
  + **继承Model基类的写法**
 
 若继承于PhalApi_Model_NotORM，则Model子类的实现代码是：  
-```
+```php
 <?php
 class Model_User extends PhalApi_Model_NotORM {
 }
 ```
 
 从上面的代码可以看出，基类已经提供了基于主键的CURD操作，并且默认根据规则自动使用user作为表名。相应地，当需要获取ID为1的用户信息时，外部调用则调整为：  
-```
+```php
 $model = new Model_User();
 $rs = $model->get(1);
 ```
 
 再进一步，我们可以得到其他的基本操作：
-```
+```php
 $model = new Model_User();
 
 // 查询
@@ -2552,7 +2609,7 @@ $model->update(1, $data); //基于主键的快速更新
 // 插入
 $data = array('name' => 'phalapi');
 $id = $model->insert($data);
-//$id = $model->insert($data, 5); //如果是分表，可以这样指定
+//$id = $model->insert($data, 5); //如果是分表，可以通过第二个参数指定分表的参考ID
 
 // 删除
 $model->delete(1);
@@ -2563,7 +2620,7 @@ $model->delete(1);
 #### (3) Model基类中的表名配置
 
 上面继承了PhalApi_Model_NotORM的Model_User类，对应默认的表名为：user。默认表名的自动匹配规则是：取“Model_”后面部分的字符全部转小写，并且在转化后会加上配置的表前缀。下面是更多Model子类及其自动映射的表名示例。  
-```
+```php
 // 对应userinfo表
 class Model_UserInfo extends PhalApi_Model_NotORM { }
 
@@ -2582,7 +2639,7 @@ class Model_Tags extends PhalApi_Model_NotORM { }
  + 数据库表使用蛇形命名法而类名使用大写字母分割的方式
  
 如，当Model_User类对应的表名为：my_user表时，可这样重新指定表名： 
-```
+```php
 <?php
 class Model_User extends PhalApi_Model_NotORM {
     protected function getTableName($id) {
@@ -2591,7 +2648,7 @@ class Model_User extends PhalApi_Model_NotORM {
 }
 ```
 其中，$id参数用于进行分表的参考主键，只有当存在分表时才需要用到。通常传入的$id是整数，然后对分表的总数进行求余从而得出分表标识。例如有10张分表的user_session表：  
-```
+```php
 <?php
 class Model_User_UserSession extends PhalApi_Model_NotORM {
     const TABLE_NUM = 10;
@@ -2612,7 +2669,7 @@ class Model_User_UserSession extends PhalApi_Model_NotORM {
 
 虽然上面的Model子类很好地封装了数据库的操作，但所提供的操作只是基本的操作，更多数据库的操作将在这一节进行详细说明。为了方便大家理解数据库的操作，假设数据库中已经有以下数据库表和纪录。 
 
-```
+```sql
 CREATE TABLE `tbl_user` (
   `id` int(11) NOT NULL,
   `name` varchar(45) DEFAULT NULL,
@@ -2628,7 +2685,7 @@ INSERT INTO `tbl_user` VALUES ('3', 'King', '100', 'game', '2015-12-23 09:42:42'
 ```
 
 并且，假设已获得了tbl_user表对应的NotORM实例$user。此NotORM表实例可从前面所介绍的两种方式获得：  
-```
+```php
 // 全局获取方式
 $user = DI()->notorm->user;
 
@@ -2643,25 +2700,25 @@ $user = $this->getORM();
  + **SELECT字段选择**  
 
 选择单个字段：    
-```
+```php
 // SELECT id FROM `tbl_user`
 $user->select('id') 
 ```
 
 选择多个字段：  
-```
+```php
 // SELECT id, name, age FROM `tbl_user`
 $user->select('id, name, age') 
 ```
 
 使用字段别名：
-```
+```php
 // SELECT id, name, MAX(age) AS max_age FROM `tbl_user`
 $user->select('id, name, MAX(age) AS max_age') 
 ```
 
 选择全部表字段：  
-```
+```php
 // SELECT * FROM `tbl_user`
 $user->select('*') 
 ```
@@ -2669,7 +2726,7 @@ $user->select('*')
  + **WHERE条件**
 
 单个条件：
-```
+```php
 // WHERE id = 1
 $user->where('id', 1)
 $user->where('id = ?', 1)
@@ -2677,7 +2734,7 @@ $user->where(array('id', 1))
 ```
 
 多个AND条件：
-```
+```php
 // WHERE id > 1 AND age > 18
 $user->where('id > ?', 1)->where('age > ?', 18)
 $user->and('id > ?', 1)->and('age > ?', 18)
@@ -2689,13 +2746,13 @@ $user->where(array('name' => 'dogstar', 'age' => 18))
 ```
 
 多个OR条件：  
-```
+```php
 // WHERE name = 'dogstar' OR age = 18
 $user->or('name', 'dogstar')->or('age', 18)
 ```
 
 嵌套条件：  
-```
+```php
 // WHERE ((name = ? OR id = ?)) AND (note = ?) -- 'dogstar', '1', 'xxx'
 
 // 实现方式1：使用AND拼接
@@ -2713,7 +2770,7 @@ $user->where('(name = :name OR id = :id) AND note = :note',
 ```
 
 IN查询：  
-```
+```php
 // WHERE id IN (1, 2, 3)
 $user->where('id', array(1, 2, 3))
 
@@ -2725,20 +2782,23 @@ $user->where('(id, age)', array(array(1, 18), array(2, 20)))
 ```
 
 模糊匹配查询：  
-```
+```php
 // WHERE name LIKE '%dog%'
 $user->where('name LIKE ?', '%dog%')
+
+// WHERE name NOT LIKE '%dog%'
+$user->where('name NOT LIKE ?', '%dog%')
 ```
 > **温馨提示：**需要模糊匹配时，不可写成：where('name LIKE %?%', 'dog')。  
 
 NULL判断查询：
-```
+```php
 // WHERE (name IS NULL)
 $user->where('name', null)
 ```
 
 非NULL判断查询：  
-```
+```php
 // WHERE (name IS NOT ?) LIMIT 1; -- NULL
 $user->where('name IS NOT ?', null)
 ```
@@ -2746,20 +2806,20 @@ $user->where('name IS NOT ?', null)
  + **ORDER BY排序**  
 
 单个字段升序排序： 
-```
+```php
 // ORDER BY age
 $user->order('age')
 $user->order('age ASC')
 ```
 
 单个字段降序排序： 
-```
+```php
 // ORDER BY age DESC
 $user->order('age DESC')
 ```
   
 多个字段排序：  
-```
+```php
 // ORDER BY id, age DESC
 $user->order('id')->order('age DESC')
 $user->order('id, age DESC')
@@ -2768,13 +2828,13 @@ $user->order('id, age DESC')
  + **LIMIT数量限制**
 
 限制数量，如查询前10个：  
-```
+```php
 // LIMIT 10
 $user->limit(10)
 ```
 
 分页限制，如从第5个位置开始，查询前10个：  
-```
+```php
 // LIMIT 5, 10
 $user->limit(5, 10)
 ```
@@ -2782,13 +2842,13 @@ $user->limit(5, 10)
  + **GROUP BY和HAVING**
 
 只有GROUP BY，没有HAVING：  
-```
+```php
 // GROUP BY note
 $user->group('note')
 ```
   
 既有GROUP BY，又有HAVING：
-```
+```php
 // GROUP BY note HAVING age > 10
 $user->group('note', 'age > 10')
 ```
@@ -2801,12 +2861,12 @@ $user->group('note', 'age > 10')
 
 操作|说明|示例|备注|是否PhalApi新增
 ---|---|---|---|---
-insert()|插入数据|$user->insert($data);|全局方式需要再调用insert_id()获取插入的ID|否
-insert_multi()|批量插入|$user->insert_multi($rows);|可批量插入|否
-insert_update()|插入/更新|接口签名：insert_update(array $unique, array $insert, array $update = array()|不存时插入，存在时更新|否
+insert()|插入数据|```$user->insert($data);```|全局方式需要再调用insert_id()获取插入的ID|否
+insert_multi()|批量插入|```$user->insert_multi($rows);```|可批量插入|否
+insert_update()|插入/更新|接口签名：```insert_update(array $unique, array $insert, array $update = array()```|不存时插入，存在时更新|否
 
 插入单条纪录数据，注意，必须是保持状态的同一个NotORM表实例，方能获取到新插入的行ID，且表必须设置了自增主键ID。    
-```
+```php
 // INSERT INTO tbl_user (name, age, note) VALUES ('PhalApi', 1, 'framework')
 $data = array('name' => 'PhalApi', 'age' => 1, 'note' => 'framework');
 $user->insert($data);
@@ -2823,7 +2883,7 @@ var_dump($id);
 ```
 
 批量插入多条纪录数据：  
-```
+```php
 // INSERT INTO tbl_user (name, age, note) VALUES ('A君', 12, 'AA'), ('B君', 14, 'BB'), ('C君', 16, 'CC')
 $rows = array(
     array('name' => 'A君', 'age' => 12, 'note' => 'AA'),
@@ -2838,7 +2898,7 @@ int(3)
 ```
 
 插入/更新：
-```
+```php
 // INSERT INTO tbl_user (id, name, age, note) VALUES (8, 'PhalApi', 1, 'framework') 
 // ON DUPLICATE KEY UPDATE age = 2
 $unique = array('id' => 8);
@@ -2856,10 +2916,10 @@ var_dump($rs);
 
 操作|说明|示例|备注|是否PhalApi新增
 ---|---|---|---|---
-update()|更新数据|$user->where('id', 1)->update($data);|更新异常时返回false，数据无变化时返回0，成功更新返回1|否
+update()|更新数据|```$user->where('id', 1)->update($data);```|更新异常时返回false，数据无变化时返回0，成功更新返回1|否
 
 根据条件更新数据：  
-```
+```php
 // UPDATE tbl_user SET age = 2 WHERE (name = 'PhalApi');
 $data = array('age' => 2);
 $rs = $user->where('name', 'PhalApi')->update($data);
@@ -2876,7 +2936,7 @@ boolean(false)      //更新异常、失败
  + 2、更新失败时，如更新一个不存在的字段，返回false，即：bool(false)
   
 用代码表示，就是：  
-```
+```php
 $rs = DI()->notorm->user->where('id', $userId)->update($data);
 
 if ($rs >= 1) {
@@ -2889,7 +2949,7 @@ if ($rs >= 1) {
 ```
 
 更新数据，进行加1操作： 
-```
+```php
 // UPDATE tbl_user SET age = age + 1 WHERE (name = 'PhalApi')
 $rs = $user->where('name', 'PhalApi')->update(array('age' => new NotORM_Literal("age + 1")));
 var_dump($rs); 
@@ -2905,21 +2965,22 @@ var_dump($rs);
 
 操作|说明|示例|备注|是否PhalApi新增
 ---|---|---|---|---
-fetch()|循环获取每一行|while($row = $user->fetch()) { //... }||否
-fetchOne()|只获取第一行|$row = $user->where('id', 1)->fetchOne();|等效于fetchRow()|是
-fetchRow()|只获取第一行|$row = $user->where('id', 1)->fetchRow();|等效于fetchOne()|是
-fetchPairs()|获取键值对|$row = $user->fetchPairs('id', 'name');|第二个参数为空时，可取多个值，并且多条纪录|否
-fetchAll()|获取全部的行|$rows = $user->where('id', array(1, 2, 3))->fetchAll();|等效于fetchRows()|是
-fetchRows()|获取全部的行|$rows = $user->where('id', array(1, 2, 3))->fetchRows();|等效于fetchAll()|是
-queryAll()|复杂查询下获取全部的行，默认下以主键为下标|$rows = $user->queryAll($sql, $parmas);|等效于queryRows()|是
-queryRows()|复杂查询下获取全部的行，默认下以主键为下标|$rows = $user->queryRows($sql, $parmas);|等效于queryAll()|是
-count()|查询总数|$total = $user->count('id');|第一参数可省略|否
-min()|取最小值|$minId = $user->min('id');||否
-max()|取最大值|$maxId = $user->max('id');||否
-sum()|计算总和|$sum = $user->sum('age');||否
+fetch()|循环获取每一行|```while($row = $user->fetch()) { ... ... }```||否
+fetchOne()|只获取第一行|```$row = $user->where('id', 1)->fetchOne();```|等效于fetchRow()|是
+fetchRow()|只获取第一行|```$row = $user->where('id', 1)->fetchRow();```|等效于fetchOne()|是
+fetchPairs()|获取键值对|```$row = $user->fetchPairs('id', 'name');```|第二个参数为空时，可取多个值，并且多条纪录|否
+fetchAll()|获取全部的行|```$rows = $user->where('id', array(1, 2, 3))->fetchAll();```|等效于fetchRows()|是
+fetchRows()|获取全部的行|```$rows = $user->where('id', array(1, 2, 3))->fetchRows();```|等效于fetchAll()|是
+queryAll()|复杂查询下获取全部的行，默认下以主键为下标|```$rows = $user->queryAll($sql, $parmas);```|等效于queryRows()|是
+queryRows()|复杂查询下获取全部的行，默认下以主键为下标|```$rows = $user->queryRows($sql, $parmas);```|等效于queryAll()|是
+count()|查询总数|```$total = $user->count('id');```|第一参数可省略|否
+min()|取最小值|```$minId = $user->min('id');```||否
+max()|取最大值|```$maxId = $user->max('id');```||否
+sum()|计算总和|```$sum = $user->sum('age');```||否
 
+  
 循环获取每一行，并且同时获取多个字段：  
-```
+```php
 // SELECT id, name FROM tbl_user WHERE (age > 18);
 $user = $user->select('id, name')->where('age > 18');
 while ($row = $user->fetch()) {
@@ -2943,7 +3004,7 @@ array(2) {
 ```
 
 循环获取每一行，并且只获取单个字段。需要注意的是，指定获取的字段，必须出现在select里，并且返回的不是数组，而是字符串。  
-```
+```php
 // SELECT id, name FROM tbl_user WHERE (age > 18);
 $user = $user->select('id, name')->where('age > 18');
 while ($row = $user->fetch('name')) {
@@ -2957,14 +3018,14 @@ string(4) "King"
 ```
 
 注意！以下是错误的用法。还记得前面所学的NotORM状态的保持吗？因为这里每次循环都会新建一个NotORM表实例，所以没有保持前面的查询状态，从而死循环。    
-```
+```php
 while ($row = DI()->notorm->user->select('id, name')->where('age > 18')->fetch('name')) {
      var_dump($row);
 }
 ```
   
 只获取第一行，并且获取多个字段，等同于fetchRow()操作。  
-```
+```php
 // SELECT id, name FROM tbl_user WHERE (age > 18) LIMIT 1;
 $rs = $user->select('id, name')->where('age > 18')->fetchOne();
 var_dump($rs);
@@ -2979,7 +3040,7 @@ array(2) {
 ```
 
 只获取第一行，并且只获取单个字段，等同于fetchRow()操作。   
-```
+```php
 var_dump($user->fetchOne('name'));  
 
 // 输出 
@@ -3016,7 +3077,7 @@ array(2) {
 ```
 
 获取键值对，并且只获取单个字段。注意，这时的值不是数组，而是字符串。  
-```
+```php
 // SELECT id, name FROM tbl_user LIMIT 2
 var_dump($user->limit(2)->fetchPairs('id', 'name')); //通过第二个参数，指定VALUE的列
 
@@ -3030,7 +3091,7 @@ array(2) {
 ```
 
 获取全部的行，相当于fetchRows()操作。  
-```
+```php
 // SELECT * FROM tbl_user
 var_dump($user->fetchAll());  
 
@@ -3038,7 +3099,7 @@ var_dump($user->fetchAll());
 ```
 
 使用原生SQL语句进行查询，并获取全部的行：  
-```
+```php
 // SELECT name FROM tbl_user WHERE age > :age LIMIT 1
 $sql = 'SELECT name FROM tbl_user WHERE age > :age LIMIT 1';
 $params = array(':age' => 18);
@@ -3060,21 +3121,21 @@ $params = array(18);
 // 也使用queryRows()别名
 $rs = $user->queryRows($sql, $params); 
 ```
-在使用queryAll()queryRows()进行原生SQL操作时，需要特别注意： 
+在使用```queryAll()queryRows()```进行原生SQL操作时，需要特别注意： 
 
  + 1、需要手动填写完整的表名字，包括分表标识，并且需要通过任意表实例来运行
  + 2、尽量使用参数绑定，而不应直接使用参数来拼接SQL语句，慎防SQL注入攻击  
 
 
 下面是不好的写法，很有可能会导致SQL注入攻击  
-```
+```php
 // 存在SQL注入的写法
 $id = 1;
 $sql = "SELECT * FROM tbl_demo WHERE id = $id";
 $rows = $this->getORM()->queryAll($sql);
 ```
 对于外部不可信的输入数据，应改用参数传递的方式。  
-```
+```php
 // 使用参数绑定方式
 $id = 1;
 $sql = "SELECT * FROM tbl_demo WHERE id = ?";
@@ -3082,7 +3143,7 @@ $rows = $this->getORM()->queryAll($sql, array($id));
 ```
 
 查询总数：  
-```
+```php
 // SELECT COUNT(id) FROM tbl_user
 var_dump($user->sum('id'));
 
@@ -3091,7 +3152,7 @@ string(3) "3"
 ```
 
 查询最小值：  
-```
+```php
 // SELECT MIN(age) FROM tbl_user
 var_dump($user->min('age'));
 
@@ -3100,7 +3161,7 @@ string(2) "18"
 ```
 
 查询最大值：  
-```
+```php
 // SELECT MAX(age) FROM tbl_user
 var_dump($user->max('age'));
 
@@ -3109,7 +3170,7 @@ string(3) "100"
 ```
 
 计算总和：
-```
+```php
 // SELECT SUM(age) FROM tbl_user
 var_dump($user->sum('age'));
 
@@ -3123,17 +3184,17 @@ string(3) "139"
 
 操作|说明|示例|备注|是否PhalApi新增
 ---|---|---|---|---
-delete()|删除|$user->where('id', 1)->delete();|禁止无where条件的删除操作|否
+delete()|删除|```$user->where('id', 1)->delete();```|禁止无where条件的删除操作|否
 
 按条件进行删除，并返回影响的行数：  
-```
+```php
 // DELETE FROM tbl_user WHERE (id = 404);
 $user->where('id', 404)->delete();
 ```
 
 请特别注意，PhalApi禁止全表删除操作。即如果是全表删除，将会被禁止，并抛出异常。如：  
 
-```
+```php
 // Exception: sorry, you can not delete the whole table
 $user->delete();
 ```
@@ -3145,7 +3206,7 @@ $user->delete();
 
 关于事务的操作，可以使用NotORM的方式。例如：  
 
-```
+```php
 // 第一步：先指定待进行事务的数据库
 // 通过获取一个notorm表实例来指定；否则会提示：PDO There is no active transaction
 $user = DI()->notorm->user;
@@ -3163,7 +3224,7 @@ DI()->notorm->transaction = 'COMMIT';
 ```
 
 也可以使用PhalApi封装的事务操作方式，并且推荐使用该方式。   
-```
+```php
     // Step 1: 开启事务
     DI()->notorm->beginTransaction('db_demo');
 
@@ -3183,13 +3244,13 @@ DI()->notorm->transaction = 'COMMIT';
 如果是简单的关联查询，可以使用NotORM支持的写法，这样的好处在于我们使用了一致的开发，并且能让PhalApi框架保持分布式的操作方式。需要注意的是，关联的表仍然需要在同一个数据库。  
   
 以下是一个简单的示例。假设我们有这样的数据：  
-```
+```sql
 INSERT INTO `phalapi_user` VALUES ('1', 'wx_edebc', 'dogstar', '***', '4CHqOhe1', '1431790647', '');
 INSERT INTO `phalapi_user_session_0` VALUES ('1', '1', 'ABC', '', '0', '0', '0', null);
 ``` 
   
 那么对应关联查询的代码如下面：
-```
+```php
 // SELECT expires_time, user.username, user.nickname FROM phalapi_user_session_0 
 // LEFT JOIN phalapi_user AS user 
 // ON phalapi_user_session_0.user_id = user.id 
@@ -3203,7 +3264,7 @@ var_dump($rs);
 ```
 
 会得到类似这样的输出：
-```
+```php
 array(3) {
   ["expires_time"]=>
   string(1) "0"
@@ -3220,7 +3281,7 @@ array(3) {
 所以```->select('expires_time, user.username, user.nickname')```这一行调用将会NotORM自动产生关联操作，而ON的字段，则是这个字段关联你配置的表结构，外键默认为：表名_id 。
 
 如果是复杂的关联查询，则是建议使用原生的SQL语句，但仍然可以保持很好的写法，如这样一个示例：
-```
+```php
 $sql = 'SELECT t.id, t.team_name, v.vote_num '
     . 'FROM phalapi_team AS t LEFT JOIN phalapi_vote AS v '
     . 'ON t.id = v.team_id '
@@ -3236,7 +3297,7 @@ var_dump($rows);
 有时，我们还需要进行一些其他的数据库操作，如创建表、删除表、添加表字段等。对于需要进行的数据库操作，而上面所介绍的方法未能满足时，可以使用更底层更通用的接口，即：```NotORM_Result::query($query, $parameters)```。  
 
 例如，删除一张表。    
-```
+```php
 DI()->notorm->user->query('DROP TABLE tbl_user', array());
 ```
 
@@ -3277,7 +3338,7 @@ tbl_demo_1|db_demo
 tbl_demo_2|db_demo
 
 首先，需要配置数据库的路由规则。这里的demo表存储比较简单，即有3张分表tbl_demo_0、tbl_demo_1、tbl_demo_2，缺省主表tbl_demo是必要的，当分表不存在时将会使用该缺省主表。数据库的路由规则在前面所说的数据库配置文件./Config/dbs.php中，其中tables为数据库表的配置信息以及与数据库实例的映射关系。因此可以在tables选项中添加此demo表的相关配置。  
-```
+```php
 return array(
     ... ...
     'tables' => array(    
@@ -3295,20 +3356,20 @@ return array(
 上面配置map选项中```array('db' => 'db_demo')```用于指定缺省主表使用db_demo数据库实例，而下一组映射关系则是用于配置连续在同一台数据库实例的分表区间，即tbl_demo_0、tbl_demo_1、tbl_demo_2都使用了db_demo数据库实例。  
 
 这里再侧重讲解一下map选项。map选项用于配置数据库表与数据库实例之前的映射关系，通俗来说就是指定哪张表使用哪个数据库。不管是否使用分表存储，都至少需要配置默认缺省主表。如：  
-```
+```php
 'map' => array(
     array('db' => 'db_demo'),
 )
 ```
 缺省主表的配置很简单，只需要配置使用哪个数据库实例即可。而当需要使用分表时，则要增加相应的映射关系配置。通常分表以“下划线 + 连续的自然数”为后缀，作为分表的标识。在配置时，对于使用同一个数据库实例的分表区间，可以配置成一组，并使用start下标和end下标来指定分表闭区间：[start, end]。如上面示例中，[0, 2]这一区间的分表使用了db_demo这一数据库实例，则可以添加配置成：  
-```
+```php
 'map' => array(
     array('db' => 'db_demo'),
     array('start' => 0, 'end' => 2, 'db' => 'db_demo'),
 )
 ```
 假设，对于tbl_demo_2分表，需要调整成使用数据库实例db_new，则可能调整配置成：  
-```
+```php
 'map' => array(
     array('db' => 'db_demo'),
     array('start' => 0, 'end' => 1, 'db' => 'db_demo'),
@@ -3317,17 +3378,17 @@ return array(
 ```
 
 配置好路由规则后，就可以使用脚本命令生成建表语句。把数据库表的基本建表语句保存到./Data目录下，文件名与数据库表名相同，后缀统一为“.sql”。如这里的./Data/demo.sql文件。  
-```
+```sql
 `name` varchar(11) DEFAULT NULL,
 ```
 需要注意的是，这里说的基本建表语句是指：仅是这个表所特有的字段，排除已固定公共有的自增主键id、扩展字段ext_data和CREATE TABLE关键字等。  
 
 然后可以使用phalapi-buildsqls脚本命令，快速自动生成demo缺省主表和全部分表的建表SQL语句。如下： 
-```
+```bash
 $ ./PhalApi/phalapi-buildsqls ./Config/dbs.php demo
 ```  
 正常情况下，会生成类似以下的SQL语句：  
-```
+```sql
 CREATE TABLE `demo` (
     `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
     `name` varchar(11) DEFAULT NULL,
@@ -3341,12 +3402,12 @@ CREATE TABLE `tpl_demo_2`  ... ...;
 ```
 
 在将上面的SQL语句导入数据库后，或者手动创建数据库表后，便可以像之前那样操作数据库了。下面是一些大家已经熟悉的示例：  
-```
+```php
 DI()->notorm->demo->where('id', '1')->fetch();
 ```
 
 假设分别的规则是根据ID对3进行求余。当需要使用分表时，在使用Model基类的情况下，可以通过重写```PhalApi_Model_NotORM::getTableName($id)```实现相应的分表规则。  
-```
+```php
 // $ vim ./Shop/Model/demo.php
 <?php
 class Model_Demo extends PhalApi_Model_NotORM {
@@ -3362,7 +3423,7 @@ class Model_Demo extends PhalApi_Model_NotORM {
 ```
 
 然后，便可使用之前一样的CURD基本操作，但框架会自动匹配分表的映射。例如：    
-```
+```php
 $model = new Model_Demo();
 
 $row = $model->get('3', 'id');   // 使用分表tbl_demo_0
@@ -3371,14 +3432,14 @@ $row = $model->get('2', 'id');   // 使用分表tbl_demo_2
 ```
 
 当使用全局方式获取NotORM实例时，则需要手动指定分表。上面的操作等效于下面使用全局NotORM实例并指定分表的实现。  
-```
+```php
 $row = DI()->notorm->demo_0->where('id', '3')->fetch();
 $row = DI()->notorm->demo_1->where('id', '10')->fetch();
 $row = DI()->notorm->demo_2->where('id', '2')->fetch();
 ```
 
 回到使用Model基类的上下文，更进一步，我们可以通过```$this->getORM($id)```来获取分表的实例从而进行分表的操作。如：  
-```
+```php
 <?php
 class Model_Demo extends PhalApi_Model_NotORM {
     ... ...
@@ -3396,7 +3457,7 @@ class Model_Demo extends PhalApi_Model_NotORM {
 当需要使用多个数据库时，可以先在servers选项配置多组数据库实例，然后在tables选项中为不同的数据库表指定不同的数据库实例。  
   
 假设我们有两台数据库服务器，分别叫做db_A、db_B，即：  
-```
+```php
 return array(
     'servers' => array(
         'db_A' => array(                              //db_A
@@ -3411,7 +3472,7 @@ return array(
 ```
   
 若db_A服务器中的数据库有表a_table_user、a_table_friends，而db_B服务器中的数据库有表b_table_article、b_table_comments，则：  
-```
+```php
 <?php
 return array(
     ... ...
@@ -3445,7 +3506,7 @@ return array(
 ```
   
 如果项目存在分表的情况，可结合上述的分表的说明再进行配置。为了让大家更容易明白，假设db_A服务器中的数据库有表a_table_user、a_table_friends_0到a_table_friends_9（共10张表），而db_B服务器中的数据库有表b_table_article、b_table_comments_0到b_table_comments_19（共20张表），则结合起来的完整配置为：  
-```
+```php
 <?php
 return array(
     ... ...
@@ -3493,10 +3554,10 @@ return array(
 
 这样的设计是有明显的灵活性的，因为在后期如果需要迁移数据库服务器，我们可以在框架支持的情况下轻松应对，但依然需要考虑到一些问题和不足。  
 
- + DB变更  
+ + **数据库变更**  
 DB变更，这块是必不可少的，但一旦数据库表被拆分后，表数量的骤增导致变更执行困难，所以这里暂时使用了一个折中的方案，即提供了一个ext_data 扩展字段用于存放后期可能需要的字段信息，建议采用json格式，因为通用且长度比序列化的短。但各开发可以根据自己的需要决定格式。即使如此，扩展字段 明显做不到一些SQL的查询及其他操作。
 
- + 表之间的关联查询  
+ + **表之间的关联查询**  
 表之间的关联查询，这个是分拆后的最大问题。虽然这样的代价是我们可以得到更庞大的存储设计， 而且很多表之间不需要必须的关联的查询，即使需要，也可以通过其他手段如缓存和分开查询来实现。这对开发人员有一定的约束，但是对于可预见性的海量数量，这又是必须的。
 
 ### 2.5.7 扩展你的项目
@@ -3506,7 +3567,7 @@ DB变更，这块是必不可少的，但一旦数据库表被拆分后，表数
 PhalApi的数据库操作基于NotORM开源类库，而NotORM底层则是采用了PDO。根据PDO所支持的数据库可推导出目前PhalApi支持数据库的连接包括但不限于：MySQL，SQLite，PostgreSQL，MS SQL，Oracle。当需要连接非MySQL数据库时，可以通过扩展并定制的方式来扩展。  
 
 例如需要连接MS SQL数据库，首先，需要重写根据配置创建PDO实例的```PhalApi_DB_NotORM::createPDOBy($dbCfg)```方法，并在里面定制对应的数据库连接的PDO。  
-```
+```php
 // $ vim ./Shop/Common/DB/MSServer.php
 <?php
 class Common_DB_MSServer extends PhalApi_DB_NotORM {
@@ -3531,7 +3592,7 @@ class Common_DB_MSServer extends PhalApi_DB_NotORM {
 如果数据库连接配置与默认的格式不同，可自行调整./Config/dbs.php里的配置。  
 
 随后，在初始化文件Shop项目的入口文件./Public/shop/index.php中重新注册```DI()->notorm```。 
-```
+```php
 DI()->notorm = function() {
     return new Common_DB_MSServer(DI()->config->get('dbs'), DI()->debug);
 };
@@ -3542,11 +3603,11 @@ DI()->notorm = function() {
 #### (2) 主从数据库的配置
 
 默认只有一从数据库的配置，并支持分表分库配置。当需要数据库从库时，可以参考./Config/dbs.php配置，复件一份作为从库的配置，例如：  
-```
-cp ./Config/dbs.php ./Config/dbs_slave.php
+```bash
+$ cp ./Config/dbs.php ./Config/dbs_slave.php
 ```
 然后，注册一个数据库从库的notorm时，指定使用从库的配置。  
-```
+```php
 DI()->notormSlave = function() {
     return new PhalApi_DB_NotORM(DI()->config->get('dbs_slave'), DI()->debug); //注意：配置不同
 };
@@ -3562,34 +3623,34 @@ DI()->notormSlave = function() {
 先是LOB序列化，考虑到有分表的存在，当发生数据库变更时会有一定的难度和风险，尤其是在线上生产环境。因此引入了扩展字段ext_data。当然，此字段在应对数据库变更的同时，也可以作为简单明了的值对象的大对象。序列化LOB首先要考虑的问题是使用二进制（BLOB）还是文本（CLOB），出于通用性、易读性和测试性，我们目前使用了json格式的文本序列化。例如考虑到空间或性能问题，可以重写格式化方法```PhalApi_Model_NotORM::formatExtData()```和解析方法```PhalApi_Model_NotORM::parseExtData()```。  
   
 比如改成serialize序列化：  
-```
+```php
 <?php
-abstract class Common_Model_NotORM extends PhalApi_Model_NotORM {
+class Common_Model_NotORM extends PhalApi_Model_NotORM {
 
-	/**
-	 * 对LOB的ext_data字段进行格式化(序列化)
-	 */
-	protected function formatExtData(&$data) {
-		if (isset($data['ext_data'])) {
-			$data['ext_data'] = serialize($data['ext_data']);
-		}
-	}
+    /**
+     * 对LOB的ext_data字段进行格式化(序列化)
+     */
+    protected function formatExtData(&$data) {
+        if (isset($data['ext_data'])) {
+            $data['ext_data'] = serialize($data['ext_data']);
+        }
+    }
 
-	/**
-	 * 对LOB的ext_data字段进行解析(反序列化)
-	 */
-	protected function parseExtData(&$data) {
-		if (isset($data['ext_data'])) {
-			$data['ext_data'] = unserialize($data['ext_data'], true);
-		}
-	}
+    /**
+     * 对LOB的ext_data字段进行解析(反序列化)
+     */
+    protected function parseExtData(&$data) {
+        if (isset($data['ext_data'])) {
+            $data['ext_data'] = unserialize($data['ext_data'], true);
+        }
+    }
 
-	// ...
+    // ...
 }
 ```
   
 然后编写继承于Common_Model_NotORM的Model子类。   
-```
+```php
 <?php
 class Model_User extends Common_Model_NotORM {
    //...
@@ -3597,7 +3658,7 @@ class Model_User extends Common_Model_NotORM {
 ```
 
 就可以轻松切换到序列化，如：  
-```
+```php
 $model = new Model_User();
 
 // 带有ext_data的更新
@@ -3614,7 +3675,7 @@ $model->update(1, $data);
 当然，这里是可以继续使用框架默认的自动匹配算法。若表主键是固定且统一的，为了提升性能，可重写```PhalApi_Model_NotORM::getTableKey($table)```方法来指定主键名。  
   
 例如，全部表的主键都固定为id时：  
-```
+```php
 <?php
 abstract class Common_Model_NotORM extends PhalApi_Model_NotORM {
 
@@ -3637,14 +3698,14 @@ abstract class Common_Model_NotORM extends PhalApi_Model_NotORM {
 
 例如，当需要使用文件缓存时，先在DI容器中注册对文件缓存到```DI()->cache```。  
 
-```
+```php
 //$ vim ./Public/init.php 
 DI()->cache = new PhalApi_Cache_File(array('path' => API_ROOT . '/Runtime', 'prefix' => 'demo'));
 ```
 初始化文件缓存时，需要传入配置数组，其中path为缓存数据的目录，可选的前缀prefix，用于区别不同的项目。  
 
 然后便可在适当的场景使用缓存。  
-```
+```php
 // 设置
 DI()->cache->set('thisYear', 2015, 600);
 
@@ -3656,7 +3717,7 @@ DI()->cache->delete('thisYear');
 ```
 
 可以看到，在指定的缓存目录下会有类似以下这样的缓存文件。  
-```
+```bash
 $ tree ./Runtime/cache/
 ./Runtime/cache/
 └── 483
@@ -3665,7 +3726,7 @@ $ tree ./Runtime/cache/
 
 #### (2) APCU缓存
 安装好APCU扩展和设置相关配置并重启PHP后，便可开始使用APCU缓存。APCU缓存的初始化比较简单，只需要简单创建实例即可，不需要任何配置。  
-```
+```php
 DI()->cache = new PhalApi_Cache_APCU();
 ```
 其他使用参考缓存接口，这里不再赘述。  
@@ -3673,15 +3734,15 @@ DI()->cache = new PhalApi_Cache_APCU();
 ### 2.6.2 高速集群缓存
 这里的高速集群缓存，是指备分布式存储能力，并且进驻内存的缓存机制。高速集群缓存性能优于简单缓存，并且能够存储的缓存容量更大，通常配置在其他服务器，即与应用服务器分开部署。其缺点是需要安装相应的PHP扩展，另外部署缓存服务，例如常见的Memcached、Redis。若需要考虑缓存落地，还要进一步配置。    
   
-### (1) Memcache/Memcached缓存
+#### (1) Memcache/Memcached缓存
 若需要使用Memcache/Memcached缓存，则需要安装相应的PHP扩展。PHP 7中已经逐渐不支持Memcache，因此建议尽量使用Memcached扩展。  
 
 如使用Memcached：  
-```
+```php
 DI()->cache = new PhalApi_Cache_Memcached(array('host' => '127.0.0.1', 'port' => 11211, 'prefix' => 'demo_'));
 ```
 初始化Memcached时，需要传递一个配置数组，其中host为缓存服务器，port为缓存端口，prefix为可选的前缀，用于区别不同的项目。配置前缀，可以防止同一台MC服务器同一端口下key名冲突。对于缓存的配置，更好的建议是使用配置文件来统一管理配置。例如调整成：  
-```
+```php
 DI()->cache = new PhalApi_Cache_Memcached(DI()->config->get('sys.mc'));
 ```
 相应的配置，则在./Config/sys.php中的mc选项中统一维护。  
@@ -3690,7 +3751,7 @@ DI()->cache = new PhalApi_Cache_Memcached(DI()->config->get('sys.mc'));
 
 #### 如何配置多个Memcache/Memcached实例？ 
 实际项目开发中，当需要连接多个Memcache/Memcached实例，可以在单个实例配置基础上采用以下配置：  
-```
+```php
 $config = array(
     'host'    => '192.168.1.1, 192.168.1.2',  //多个用英文逗号分割
     'port'    => '11211, 11212',              //多个用英文逗号分割
@@ -3707,7 +3768,7 @@ DI()->cache = new PhalApi_Cache_Memcached($config);
 其中，权重是可选的。并且**以host域名的数量为基准**，即最终MC实例数量以host的个数为准。端口数量不足时取默认值11211，多出的端口会被忽略；同样，权重数量不足时取默认值0，多出的权重会被忽略。  
   
 如下，是一份稀疏配置：  
-```
+```php
 $config = array(
     'host'    => '192.168.1.1, 192.168.1.2, 192.168.1.3',
     'port'    => '11210',
@@ -3725,7 +3786,7 @@ $config = array(
 当需要使用Redis缓存时，需要先安装对应的Redis扩展。  
 
 简单的Redis缓存的初始化如下：  
-```
+```php
 $config = array('host' => '127.0.0.1', 'port' => 6379);
 DI()->cache = new PhalApi_Cache_Redis($config);
 ```
@@ -3757,7 +3818,7 @@ db|否|0|Redis库
 
   
 以下是结合文件缓存和MC缓存的多级缓存示例：
-```
+```php
 $cache = PhalApi_Cache_Multi();
 
 $mcCache = new PhalApi_Cache_Memcached(array('host' => '127.0.0.1', 'port' => 11211, 'prefix' => 'demo_'));
@@ -3770,7 +3831,7 @@ DI()->cache = $cache;
 ```
 
 然后，就可像之前那样设置、获取和删除缓存，而不需考虑是单点缓存，还是多级缓存。  
-```
+```php
 // 设置
 DI()->cache->set('thisYear', 2015, 600);
 
@@ -3783,7 +3844,9 @@ DI()->cache->delete('thisYear');
   
 对应地，我们可以得出清晰明了的UML静态结构图：
 
-![](images/ch-2-multi-cache.jpg)
+![图2-11 缓存的静态结构](http://7xiz2f.com1.z0.glb.clouddn.com//ch-2-multi-cache.jpg)
+
+图2-11 缓存的静态结构
   
 结构层次非常简单，但主要分为三大类：左边是多级缓存；中间突出的是特殊情况，即空对象模式下的空缓存；右边是目前已提供或者后期扩展的具体缓存实现。  
 
@@ -3794,7 +3857,7 @@ DI()->cache->delete('thisYear');
 当需要实现其他缓存机制时，例如使用COOKIE、SESSION、数据库等其他方式的缓存，可以先实现具体的缓存类，再重新注册```DI()->cache```即可。  
 
 首先，简单了解下PhalApi中的缓存接口。  
-```
+```php
 <?php
 interface PhalApi_Cache {
     public function set($key, $value, $expire = 600);
@@ -3810,8 +3873,9 @@ PhalApi_Cache缓存接口，主要有三个操作：设置缓存、获取缓存�
 
 关于日志接口，PSR规范中给出了相当好的说明和定义，并且有多种细分的日记级别。  
 
-![](images/ch-2-logger-interface.png)  
-图2-10 摘自PSR中的Logger Interface  
+![](http://7xiz2f.com1.z0.glb.clouddn.com//ch-2-logger-interface.png) 
+
+图2-12 摘自PSR中的Logger Interface  
 
 ### 2.7.1 简化版的日记接口
 
@@ -3826,7 +3890,7 @@ PhalApi_Cache缓存接口，主要有三个操作：设置缓存、获取缓存�
 系统异常类日志用于纪录**在后端不应该发生却发生的事情**，即通常所说的系统异常。例如：调用第三方、的接口失败了，此时需要纪录一下当时的场景，以便复查和定位出错的原因。又如：写入一条纪录到数据纪录却失败了，此时需要纪录一下，以便进一步排查。  
   
 纪录系统异常日志，用法很简单。可以使用```PhalApi_Logger::error($msg, $data)```接口，第一个参数$msg用于描述日志信息，第二个可选参数为上下文场景的信息。下面是一些使用示例。     
-```
+```php
 // 只有描述
 DI()->logger->error('fail to insert DB');
 
@@ -3839,7 +3903,7 @@ DI()->logger->error('fail to insert DB', $data);
 ```
 
 上面三条纪录，会在日记文件中生成类似以下的日志内容。  
-```
+```bash
 $ tailf ./Runtime/log/201502/20150207.log 
 2015-02-07 20:37:55|ERROR|fail to insert DB
 2015-02-07 20:37:55|ERROR|fail to insert DB|try to register user dogstar
@@ -3849,11 +3913,13 @@ $ tailf ./Runtime/log/201502/20150207.log
 #### (2) info 业务纪录类日记
 
 业务纪录日志，是指纪录业务上关键流程环节的操作，以便发生系统问题后进行回滚处理、问题排查以及数据统计。如在有缓存的情况下，可能数据没及时写入数据库而导致数据丢失或者回档，这里可以通过日记简单查看是否可以恢复。以及说明一下操作发生的背景或原由，如通常游戏中用户的经验值添加：  
-```
+```php
 // 假设：10 + 2 = 12
 DI()->logger->info('add user exp', array('name' => 'dogstar', 'before' => 10, 'addExp' => 2, 'after' => 12, 'reason' => 'help one more phper'));
+```
 
-// 对应的LOG
+对应的日记为：
+```
 2015-02-07 20:48:51|INFO|add user exp|{"name":"dogstar","before":10,"addExp":2,"after":12,"reason":"help one more phper"}
 ```  
 
@@ -3879,7 +3945,7 @@ DI()->logger->info('add user exp', array('name' => 'dogstar', 'before' => 10, 'a
 还有更为重要的是**数据统计**。这块就App数据分析和统计这块已经有了很好的第三方服务支持。但仍然可以轻松实现自己的数据统计，以便二次确认和定制化。毕竟，总是依赖第三方不是那么轻便，而且存在敏感数据安全问题。  
 
 假设提供一个简单的上报接口，如：  
-```
+```php
 // $ vim ./Shop/Api/Statistics.php
 <?php
 class Api_Statistics extends PhalApi_Api {
@@ -3909,7 +3975,7 @@ http://api.phalapi.net/shop/?service=Statistics.Report&username=dogstar&msg=ente
 ```
 
 到后期，若我们需要统计用户的登录情况时，便可以这样进行数据统计每天各个用户登录的次数，从而得出用户活跃程度。  
-```
+```bash
 $ cat ./Runtime/log/201502/20150207.log | grep "enter app" | awk -F '|' '{print $3}' | sort | uniq -c
      11 dogstar
       5 King
@@ -3919,7 +3985,7 @@ $ cat ./Runtime/log/201502/20150207.log | grep "enter app" | awk -F '|' '{print 
 #### (3) debug 开发调试类日记
 
 开发调试类日记，主要用于开发过程中的调试。用法如上，这里不再赘述。以下是一些简单的示例。  
-```
+```php
 // 只有描述
 DI()->logger->debug('just for test');
 
@@ -3933,18 +3999,19 @@ DI()->logger->debug('just for test', array('name' => 'dogstar', 'password' => '*
 #### (4) 更灵活的分类  
 
 若上面的error、info、debug都不能满足项目的需求时，可以使用```PhalApi_Logger::log()```接口进行更灵活的日记纪录。  
-```
+```php
 DI()->logger->log('demo', 'add user exp', array('name' => 'dogstar', 'after' => 12));
 DI()->logger->log('test', 'add user exp', array('name' => 'dogstar', 'after' => 12));
+```
 
-// 对应的日记
+对应的日记为：
+```
 2015-02-07 21:13:27|DEMO|add user exp|{"name":"dogstar","after":12}
 2015-02-07 21:15:39|TEST|add user exp|{"name":"dogstar","after":12}
-
 ```
   
 注意到，```PhalApi_Logger::log()```接口第一个参数为日记分类的名称，在写入日记时会自动转换为大写。其接口函数签名为：  
-```
+```php
     /**
      * 日记纪录
      *
@@ -3963,7 +4030,7 @@ DI()->logger->log('test', 'add user exp', array('name' => 'dogstar', 'after' => 
 在使用日志纪录前，在注册日志```DI()->logger```服务时须指定开启的日志级别，以便允许指定级别的日志得以纪录，从而达到选择性保存所需要的日志的目的。  
 
 通过PhalApi_Logger的构造函数的参数，可以指定日志级别。多个日记级别使用或运算进行组合。  
-```
+```php
 DI()->logger = new PhalApi_Logger_File(API_ROOT . '/Runtime',
     PhalApi_Logger::LOG_LEVEL_DEBUG | PhalApi_Logger::LOG_LEVEL_INFO | PhalApi_Logger::LOG_LEVEL_ERROR);
 ```
@@ -3982,7 +4049,7 @@ debug 开发调试类|PhalApi_Logger::LOG_LEVEL_DEBUG
 ### 2.7.2 扩展你的项目
 
 普遍情况下，我们认为将日记存放在文件是比较合理的，因为便于查看、管理和统计。当然，如果你的项目需要将日记纪录保存在其他存储媒介中，也可以快速扩展实现的。例如实现数据库的存储思路。   
-```
+```php
 //$ vim ./Shop/Common/Logger/DB.php
 <?php
 class Common_Logger_DB extends PhalApi_Logger {
@@ -3994,7 +4061,7 @@ class Common_Logger_DB extends PhalApi_Logger {
 ```
 
 随后，重新注册```DI()->logger```服务即可。  
-```
+```php
 DI()->logger = new Common_Logger_DB(
     PhalApi_Logger::LOG_LEVEL_DEBUG | PhalApi_Logger::LOG_LEVEL_INFO | PhalApi_Logger::LOG_LEVEL_ERROR);
 ```
@@ -4006,7 +4073,7 @@ DI()->logger = new Common_Logger_DB(
 ### 2.8.1 COOKIE的基本使用
 
 如同其他的服务一样，我们在使用前需要对COOKIE进行注册。COOKIE服务注册在```DI()->cookie```中，可以使用PhalApi_Cookie实例进行初始化，如：  
-```
+```php
 $config = array('domain' => '.phalapi.net');
 DI()->cookie = new PhalApi_Cookie($config);
 ```
@@ -4022,7 +4089,7 @@ secure|是否仅仅通过安全的HTTPS连接传给客户端|FALSE
 httponly|是否仅可通过HTTP协议访问|FALSE
 
 注册COOKIE服务后，便可以开始在项目中使用了。COOKIE的使用主要有三种操作，分别是：设置COOKIE、获取COOKIE、删除COOKIE。下面是一些简单的使用示例。  
-```
+```php
 // 设置COOKIE
 // Set-Cookie:"name=phalapi; expires=Sun, 07-May-2017 03:26:45 GMT; domain=.phalapi.net"
 DI()->cookie->set('name', 'phalapi', $_SERVER['REQUEST_TIME'] + 600);
@@ -4051,7 +4118,7 @@ crypt|加解密服务，须实现PhalApi_Crypt接口|DI()->crypt
 key|crypt使用的密钥|debcf37743b7c835ba367548f07aadc3
 
 假设项目中简单地使用base64对COOKIE进行加解密，则可先添加加解密服务的实现类。  
-```
+```php
 // $ vim ./Shop/Common/Crypt/Base64.php
 <?php
 class Common_Crypt_Base64 implements PhalApi_Crypt {
@@ -4067,7 +4134,7 @@ class Common_Crypt_Base64 implements PhalApi_Crypt {
 ```
 
 随后，在项目入口文件./Public/shop/index.php使用该加解密实现类重新注册```DI()->cookie```服务，由于加解密中未使用到密钥```$key```，所以可以不用配置。  
-```
+```php
 $config = array('domain' => '.phalapi.net', 'crypt' => new Common_Crypt_Base64());
 DI()->cookie = new PhalApi_Cookie_Multi($config);
 ```
@@ -4100,7 +4167,7 @@ DI()->cookie->set('name', 'phalapi', $_SERVER['REQUEST_TIME'] + 600);
 ## 2.9 i18n国际化
 
 一直以来，在项目开发中，都是以硬编码方式返回中文文案或者提示信息的，如：  
-```
+```php
 $rs['msg'] = '用户不存在';
 ```
 这种写法在根本不需要考虑国际化翻译的项目中是没问题的，但当开发的项目面向的是国际化用户人群时，使用i18n则是很有必要的。  
@@ -4108,14 +4175,14 @@ $rs['msg'] = '用户不存在';
 ### 2.9.1 语言设定
 
 在初始化文件./Public/init.php中，通过快速函数```SL($language)```或者类静态函数```PhalApi_Translator::setLanguage($language)```，可以设定当前所使用的语言。  
-```
+```php
 // 设置语言为简体中文
 // 等效于PhalApi_Translator::setLanguage('zh_cn')
 SL('zh_cn');    
 ```
 
 设定的语言即为语言目录下对应语言的目录名称，例如可以是：de、en、zh_cn、zh_tw等。  
-```
+```bash
 $ tree ./Language/
 ./Language/
 ├── de
@@ -4126,20 +4193,20 @@ $ tree ./Language/
 ```
 
 此处，也可以通过客户端传递参数动态选择语言。简单地：  
-```
+```php
 SL(isset($_GET['lan'] ? $_GET['lan'] : 'zh_cn');
 ```
 
 ### 2.9.2 翻译包
 翻译包的文件路径为：./Language/语言/common.php，例如简体中文zh_cn对应的翻译包文件为：./Language/zh_cn/common.php。此翻译包文件返回的是一个数组，其中键为待翻译的内容，值为翻译后的内容。例如：  
-```
+```php
 return array(
     'Hi {name}, welcome to use PhalApi!' => '{name}您好，欢迎使用PhalApi！',
     'user not exists' => '用户不存在',
 );
 ```
 对于需要动态替换的参数，可以使用大括号括起来，如名字参数name对应为{name}。除了这种关联数组的方式，还可以使用索引数组的方式来传递动态参数。例如：  
-```
+```php
 return array(
     ... ...
     'I love {0} because {1}' => '我爱{0}，因为{1}',
@@ -4149,11 +4216,11 @@ return array(
 ### 2.9.3 通用的翻译写法
 
 当需要进行翻译时，可以使用快速函数```T($msg, $params = array())```，第一个参数为待翻译的内容，第二个参数为可选的动态参数。例如前面的文案调整成： 
-```
+```php
 $rs['msg'] = T('user not exists');
 ```  
 最后显示的内容将是对应翻译包里的翻译内容，如这里对应的是：  
-```
+```php
 // $vim ./Language/zh_cn/common.php
 return array(
     ... ...
@@ -4162,13 +4229,13 @@ return array(
 ```
   
 当翻译中存在动态参数时，根据待翻译中参数的传递方式，可以相应提供对应的动态参数。例如对于关联数组方式，可以：  
-```
+```php
 // 输出：dogstar您好，欢迎使用PhalApi！
 echo T('Hi {name}, welcome to use PhalApi!', array('name' => 'dogstar'));
 ```
 
 关联数组方式中参数的对应关系由键名对应，而索引数组方式则要严格按参数出现的顺序对应传值，例如：  
-```
+```php
 // 输出：我爱PhalApi，因为它专注于接口开发
 echo T('I love {0} because {1}', array('PhalApi', '它专注于接口开发'));
 ```
@@ -4179,7 +4246,7 @@ echo T('I love {0} because {1}', array('PhalApi', '它专注于接口开发'));
 
 当需要增加其他翻译时，可以先在语言目录./Language中添加相应的语言目录，以及对应的翻译包文件。例如当需要添加日语时，可以先创建语言目录./Laguage/jp，再添加翻译包文件./Laguage/jp/common.php，并在里面放置待翻译的内容。  
 
-```
+```bash
 $ tree ./Language/
 ./Language/
 ...
@@ -4191,7 +4258,7 @@ $ tree ./Language/
 
 而在进行扩展类库开发时，对于也拥有翻译包的扩展类库，其翻译包文件可以放在扩展类库本身目录的Language子目录中，其结构一样。但这时需要手动引入翻译包目录，以便框架可以加载识别。当需要加载其他路径的翻译包时，可以使用```PhalApi_Translator::addMessage($path)```进行添加，后面添加的翻译包会覆盖前面的翻译包。例如User扩展类库中的：  
 
-```
+```php
 PhalApi_Translator::addMessage(API_ROOT . '/Library/User');
 ```
 这样，就可以添加和使用```API_ROOT . '/Library/User/Language'```目录下的翻译包了。  

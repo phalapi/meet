@@ -73,7 +73,7 @@ zenphpWS3很好地支撑毕业论文项目的开发，并初步具备了一个�
 泡一杯咖啡，让我们开始吧。
 
 ## 1.4 下载与安装
-可到Github下载最新版框架代码。  
+可到Github下载最新版PhalApi框架代码。  
 > Github地址：https://github.com/phalapi/phalapi  
 
 其中，release分支为中文稳定版；release-en分支为英文稳定版。需要使用PHP 5.3.3及以上版本。  
@@ -92,7 +92,7 @@ zenphpWS3很好地支撑毕业论文项目的开发，并初步具备了一个�
 所以在这里，本书统一约定使用PhaApi 1.4.0 版本，并且推荐使用Nginx作为服务器。以这里的环境安装为例，假设框架解压的目录为：```/path/to/PhalApi/Public```，则首先需要添加Nginx配置文件```api.phalapi.net```，然后重启Nginx，最后添加HOST并访问。  
 
 即首先，新建一个配置文件：  
-```
+```bash
 # vim /etc/nginx/sites-available/api.phalapi.net
 ```
 
@@ -123,12 +123,12 @@ server {
 ```
   
 接着，创建软链：  
-```
+```bash
 # ln -s /etc/nginx/sites-available/api.phalapi.net /etc/nginx/sites-enabled/api.phalapi.net
 ```
 
 重启Nginx服务：  
-```
+```bash
 $ /etc/init.d/nginx restart
 ```
 
@@ -162,15 +162,18 @@ http://api.phalapi.net/demo/
 
 安装向导在目录```./Public/install/```下，在浏览器输入```http://api.phalapi.net/install/```便可访问此安装向导。安装界面如下：  
 
-![](images/ch-1-api-install.png)  
+![图1-1 安装向导](http://7xiz2f.com1.z0.glb.clouddn.com/ch-1-api-install.png)  
+
 图1-1 安装向导  
   
 随后按照提示，一步步操作即可。创建新项目过程，会要求输入项目名称。假设我们需要为商城创建一个项目，并命名为：shop，那么安装完成后访问效果如下。  
-![](images/ch-1-shop-default-api.png)  
+
+![图1-2 新建shop项目的运行效果](http://7xiz2f.com1.z0.glb.clouddn.com/ch-1-shop-default-api.png)  
+
 图1-2 新建shop项目的运行效果  
   
 这时，可以看到新建了以下目录和文件。  
-```
+```bash
 $ tree ./Shop/ ./Public/shop/
 ./Shop/
 ├── Api
@@ -210,7 +213,8 @@ $ tree ./Shop/ ./Public/shop/
 遵循国际惯例，这里编写的第一个接口也是Hello World。这是一个非常简单的接口，主要功能是返回“Hello World”这串字符。　　
   
 继续使用上面已创建的shop项目。首先，创建一个接口类文件```./Shop/Api/Welcome.php```，并在这里实现主要的功能。  
-```
+
+```php
 // ./Shop/Api/Welcome.php
 <?php
 class Api_Welcome extends PhalApi_Api {
@@ -232,7 +236,7 @@ http://api.phalapi.net/shop/?service=Welcome.Say
 ```
   
 以上代码和运行结果截图如下。  
-![](images/ch-1-shop-welcome.png)  
+![图 1-3 Hello World代码与运行结果](http://7xiz2f.com1.z0.glb.clouddn.com/?key=170542747372c16e7ec2)  
 图 1-3 Hello World代码与运行结果  
   
 是不是发现接口开发很简单？  

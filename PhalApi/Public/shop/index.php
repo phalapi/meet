@@ -17,6 +17,8 @@ DI()->_formatterEmail = 'Common_Request_Email';
 
 // XML返回
 //DI()->response = 'Common_Response_XML';
+// 调整返回结构
+DI()->response = 'Common_Response_Result';
 
 $config = array('domain' => '.phalapi.net');
 DI()->cookie = new PhalApi_Cookie($config);
