@@ -8,7 +8,7 @@ class Api_Comment extends PhalApi_Api {
     public function getRules() {
         return array(
             'get' => array(
-                'id' => array('name' => 'id', 'type' => 'int', 'require' => true),
+                'id' => array('name' => 'id', 'type' => 'int', 'require' => true, 'min' => 1, 'desc' => '评论ID'),
             ),
             'add' => array(
                 'content' => array('name' => 'content', 'require' => true),
@@ -26,9 +26,13 @@ class Api_Comment extends PhalApi_Api {
 
     /**
      * 获取评论
+     * @desc 根据评论ID获取对应的评论信息
+     * @return int      id      评论ID，不存在时不返回
+     * @return string   content 评论内容，不存在时不返回
      */
     public function get() {
-        return array('id' => $this->id, 'content' => '模拟获取：评论内容');
+        $domain = new Domain_Comment();
+        return $domain->get($this->id);
     }
 
     /**

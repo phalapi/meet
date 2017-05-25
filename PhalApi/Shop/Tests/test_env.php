@@ -14,3 +14,14 @@ DI()->loader->addDirs('Shop');
 DI()->logger = new PhalApi_Logger_Explorer(
 	PhalApi_Logger::LOG_LEVEL_DEBUG | PhalApi_Logger::LOG_LEVEL_INFO | PhalApi_Logger::LOG_LEVEL_ERROR);
 
+// 禁用缓存
+DI()->cache = new PhalApi_Cache_None();
+
+if (class_exists('Common_Kernal', FALSE)) {
+    class Common_Kernal {
+
+        public static function eixt($status = NULL) {
+            echo "exit here ...\n";
+        }
+    }
+}

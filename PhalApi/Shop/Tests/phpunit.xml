@@ -22,6 +22,7 @@
         </testsuite>
         <testsuite name="api">
             <directory suffix="Test.php">./Api</directory>
+            <exclude>./Api/DI_Test.php</exclude>
         </testsuite>
         <testsuite name="Domain">
             <directory suffix="Test.php">./Domain</directory>
