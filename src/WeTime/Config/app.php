@@ -9,7 +9,27 @@ return array(
      * 应用接口层的统一参数
      */
     'apiCommonRules' => array(
-        //'sign' => array('name' => 'sign', 'require' => true),
+        // 验签
+        'service' => array(
+            'name' => 'service', 'type' => 'string', 'require' => true, 'default' => 'Default.Index',
+        ),
+        'sign' => array(
+            'name' => 'sign', 'type' => 'string', 'require' => true,
+        ),
+
+        // 客户端类型：ios/android/pc
+        'client' => array(
+            'name' => 'client', 'type' => 'enum', 'default' => 'pc', 'require' => false, 'range' => array('ios', 'android', 'pc'),
+        ),
+        // 客户端App版本号，如：1.0.1
+        'version' => array(
+            'name' => 'version', 'type' => 'string', 'default' => '', 'require' => false,
+        ),
+
+        // 登录信息
+        'userId' => array(
+            'name' => 'user_id', 'type' => 'int', 'default' => 0, 'require' => false,
+        ),
     ),
 
     /**
