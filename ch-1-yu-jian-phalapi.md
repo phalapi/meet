@@ -73,8 +73,15 @@ zenphpWS3很好地支撑毕业论文项目的开发，并初步具备了一个�
 泡一杯咖啡，让我们开始吧。
 
 ## 1.4 下载与安装
-可到Github下载最新版PhalApi框架代码。  
-> Github地址：https://github.com/phalapi/phalapi  
+PhalApi框架的最新版本的代码，可以到Github进行下载。  
+```
+https://github.com/phalapi/phalapi  
+```
+也可以到国内的码云上进行下载。  
+```
+http://git.oschina.net/dogstar/PhalApi
+```
+这两个仓库的代码会同步一致，开发人员可根据自己的喜欢选择使用。 
 
 其中，release分支为中文稳定版；release-en分支为英文稳定版。需要使用PHP 5.3.3及以上版本。  
     
@@ -236,8 +243,10 @@ http://api.phalapi.net/shop/?service=Welcome.Say
 ```
   
 以上代码和运行结果截图如下。  
-![图 1-3 Hello World代码与运行结果](http://7xiz2f.com1.z0.glb.clouddn.com/?key=170542747372c16e7ec2)  
-图 1-3 Hello World代码与运行结果  
+
+![图 1-3 Hello World代码与运行结果](http://7xiz2f.com1.z0.glb.clouddn.com/ch-1-shop-welcome.png)  
+
+图1-3 Hello World代码与运行结果
   
 是不是发现接口开发很简单？  
   

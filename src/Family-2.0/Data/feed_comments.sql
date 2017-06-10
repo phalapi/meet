@@ -1,0 +1,6 @@
+    `feed_id` bigint(20) DEFAULT '0',
+    `user_id` bigint(20) DEFAULT '0' COMMENT '发布评论的用户ID',
+    `message` text COMMENT '评论内容',
+    `to_comment_id` bigint(20) DEFAULT '0' COMMENT '针对评论的回复，为0时表示对动态评论',
+    `to_user_id` bigint(20) DEFAULT '0' COMMENT '被评论者的用户id',
+    `dateline` int(11) DEFAULT '0' COMMENT '评论的时间戳',
