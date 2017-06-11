@@ -47,12 +47,8 @@ SL('zh_cn');
 DI()->filter = 'PhalApi_Filter_SimpleMD5';
  */
 
-/**
 // 缓存 - Memcache/Memcached
-DI()->cache = function () {
-    return new PhalApi_Cache_Memcache(DI()->config->get('sys.mc'));
-};
- */
+//DI()->cache = new PhalApi_Cache_Memcache(DI()->config->get('sys.mc'));
 
 /**
 // 支持JsonP的返回

@@ -652,7 +652,6 @@ class Api_Group_Member extends PhalApi_Api {
     public function getRules() {
         return array(
             'joinGroup' => array(
-                'UUID' => array('name' => 'UUID', 'type' => 'string', 'default' => '00000000000000000000000000000000000000000000000000', 'require' => true, 'min' => 50, 'max' => 50,),
                 'groupNum' => array('name' => 'group_num', 'require' => true, 'min' => 4),
                 'groupPwd' => array('name' => 'group_pwd', 'require' => true, 'min' => 4),
                 'deviceType' => array('name' => 'device_type', 'type' => 'enum', 'range' => array('all', 'cube', 'scale'), 'default' => 'all'),
@@ -785,7 +784,6 @@ class Api_Device_Scale extends PhalApi_Api {
     public function getRules() {
         return array(
             'uploadWeight' => array(
-                'UUID' => array('name' => 'UUID', 'type' => 'string', 'default' => '00000000000000000000000000000000000000000000000000', 'require' => true, 'min' => 50, 'max' => 50,),
                 'weight' => array('name' => 'weight', 'type' => 'int', 'min' => 0, 'max' => 250000, 'default' => 0, 'require' => true),
                 'type' => array('name' => 'type', 'type' => 'enum', 'range' => array(0, 1, 2), 'default' => 0, 'require' => true),
                 'babyPosition' => array('name' => 'baby_position', 'type' => 'int', 'default' => 0, 'require' => false),
@@ -1112,7 +1110,6 @@ Task扩展类库有一个通用的触发器，但基于我们现在特定的业�
 // Family-2.0$ vim ./Apps/Task/TMyTrigger/PushBase.php
 <?php
 abstract class TMyTrigger_PushBase implements Task_Progress_Trigger {
-
     public function fire($params) {
         //取全部待推送的用户
         $suser = $this->getWaitTOPushUserORM();
@@ -1154,7 +1151,6 @@ abstract class TMyTrigger_PushBase implements Task_Progress_Trigger {
 // Family-2.0$ vim ./Apps/Task/TMyTrigger/WeekPush.php 
 <?php
 class TMyTrigger_WeekPush extends TMyTrigger_PushBase {
-
     protected function getWaitTOPushUserORM() {
         return DI()->notorm->suser
             ->select('user_id')
@@ -1173,9 +1169,7 @@ class TMyTrigger_WeekPush extends TMyTrigger_PushBase {
 ```php
 // Family-2.0$ vim ./Apps/Scale/Api/Nutrition/SWeek.php 
 <?php
-
 class Api_Nutrition_SWeek extends PhalApi_Api {
-
     public function getRules() {
         return array(
             '*' => array(
@@ -1248,16 +1242,423 @@ class PhpUnderControl_TaskMyTriggerWeekPush_Test extends PHPUnit_Framework_TestC
 
 古人有云：业精于勤而荒于嬉。  
 
-但对于软件开发工程师来说，要想做到精益求精，不仅需要勤奋努力，我觉得适当有效地运用工具，也是必不可少的。下面，我们将在学习一下，在使用PhalApi完成项目开发后，可以使用哪些工具来帮助我们更好地提升性能、进行部署与发布。
+但对于软件开发工程师来说，要想做到精益求精，不仅需要勤奋努力，我觉得适当有效地运用工具，也是必不可少的。下面，我们将在学习一下，在使用PhalApi完成项目开发后，可以使用哪些工具来帮助我们更好地进行开发，部署、发布和性能优化。
 
-### 6.5.1 Ad压力测试与高效缓存
+### 6.5.1 获取家庭圈信息的接口服务
+为了更好地理解如何使用接下来要介绍的工具，并应用在实际项目开发过程中，先来简单认识一个接口服务——获取家庭圈信息。  
+
+在Family 2.0 项目中，有一个重要的业务模块，即家庭圈。家庭圈对应的数据库表为fami_group，它的部分表结构定义如下：  
+```sql
+CREATE TABLE `fami_group` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `number` varchar(10) DEFAULT '0000' COMMENT '家庭号',
+  `groupname` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '家庭组名称',
+  `password` varchar(64) DEFAULT '' COMMENT '密码',
+  ... ...
+  PRIMARY KEY (`id`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+```
+
+并且，假设已经在以下测试数据，它的家庭号为8888，家庭圈名称为“我的家”，密码为1234。 
+
+表6-3 家庭表fami_group的测试数据  
+
+id|number|groupname|password
+---|---|---|---
+1|8888|我的家|1234
+
+现在，需要开发一个获取家庭圈信息的接口服务，并使用此接口服务中获取上面ID为1的信息，结合单元测试驱动开发以及前面所学的知识，我们很快就能编写出下面这样的代码。  
+
+Api接口层为：  
+```php
+// Family-2.0$ vim ./Apps/Fami/Api/Group.php 
+<?php
+class Api_Group extends PhalApi_Api {
+    public function getRules() {
+        return array(
+            'getGroupInfo' => array(
+                'groupId' => array('name' => 'group_id', 'require' => true),
+            ),
+        );
+    }
+
+    public function getGroupInfo() {
+        $rs = array('code' => Common_Def::CODE_OK, 'msg' => '');
+
+        $domain = new Domain_Group();
+        $rs['info'] = $domain->getGroupInfoByGroupId($this->groupId);
+
+        return $rs;
+    }
+}
+```
+
+Domain领域业务层为：  
+```php
+// Family-2.0$ vim ./Apps/Fami/Domain/Group.php 
+<?php
+class Domain_Group {
+    public function getGroupInfoByGroupId($groupId) {
+        $model = new Model_Group();
+        $row = $model->getGroupInfoByGroupId($groupId);
+        return $row;
+    }
+}
+```
+
+最后，Model数据模型层为：  
+```php
+// Family-2.0$ vim ./Apps/Fami/Model/Group.php 
+<?php
+class Model_Group extends PhalApi_Model_NotORM {
+    public function getGroupInfoByGroupId($groupId) {
+        return $this->getORM()
+            ->select('number, groupname, password')
+            ->where('id', $groupId)
+            ->fetchRow();
+    }
+}
+```
+
+开发完成后，可以在浏览器或者通过curl命令简单测试一下，验证获取信息是否正确。如：  
+```
+$ curl "http://api.v2.family.com/fami/?service=Group.getGroupInfo&group_id=1"
+```
+正常情况下，会返回类似以下这样的结果：  
+```
+{
+    "ret": 200,
+    "data": {
+        "code": 0,
+        "msg": "",
+        "info": {
+            "number": "8888",
+            "groupname": "我的家",
+            "password": "1234"
+        }
+    },
+    "msg": ""
+}
+```
+
+至此，又一功能性的需求已经开发完成。但对于非功能性的需求呢？例如，```Group.getGroupInfo```这一接口的响应时间如何？支持最大并发量是多少？  
 
 ### 6.5.2 使用Xhprof剖析性能
-arry_multi_sort
+Xhprof是一个非常优秀的性能分析工具，它可以从程序内部剖析代码执行过程中每个环节的具体情况。这里不过多的讲述此工具的特点和使用，而讲述如何使用Xhprof发现系统中的性能瓶颈。 
 
-### 6.5.3 通过Phing进行部署和发布
+假设Xhprof扩展已安装成功。使用以下命令可检测本地环境是否已开启了xhprof扩展，正常情况下可以看到输出xhprof。
+```php
+$ php -m | grep xhprof
+xhprof
+```
+
+环境准备就绪后，为了使用xhprof，可修改对应的入口文件，在index.php文件前后分别加上xhprof相应的代码片段。如：  
+```
+// Family-2.0$ vim ./Public/fami/index.php 
+<?php
+// start profiling
+xhprof_enable();
+
+require_once dirname(__FILE__) . '/../init.php';
+
+//装载你的接口
+DI()->loader->addDirs('Apps/Fami');
+
+/** ---------------- 响应接口请求 ---------------- **/
+
+$api = new PhalApi();
+$rs = $api->response();
+$rs->output();
+
+// stop profiler
+$xhprof_data = xhprof_disable();
+
+$XHPROF_ROOT = '/path/to/xhprof';
+include_once $XHPROF_ROOT . "/xhprof_lib/utils/xhprof_lib.php";
+include_once $XHPROF_ROOT . "/xhprof_lib/utils/xhprof_runs.php";
+
+// save raw data for this profiler run using default
+// implementation of iXHProfRuns.
+$xhprof_runs = new XHProfRuns_Default();
+
+// save the run under a namespace "xhprof_foo"
+$run_id = $xhprof_runs->save_run($xhprof_data, "xhprof_foo");
+
+echo "http://<xhprof-ui-address>/index.php?run=$run_id&source=xhprof_foo\n";
+```
+
+此时，再次调用Group.getGroupInfo接口服务并获取group_id为1的家庭圈信息时，根据生成的报告```$run_id```及配置的站点环境，便可在浏览器在线查看到对应的性能分析报告。在这里，按”Excl. Wall Time“字段降序排列后，可看到类似以下这样的报告。  
+
+![图6-9 无缓存下的性能分析报告](http://7xiz2f.com1.z0.glb.clouddn.com/ch-6-xhprof-no-cache.jpg)  
+
+图6-9 无缓存下的性能分析报告
+
+从上图可以看出，耗时最严重的前4个操作中，就有3个操作是与数据库访问有关的，分别是：```PDO::__construct```，```PDOStatement::execute```、和```PDO::exec```。这三个操作加起来的执行时间已经占据了整体的约56.6%，由此可见数据库的访问耗时之多。  
+
+Xhprof还提供了可视化的图形，并对耗时最多的环节标为红色，用黄色标记了耗时最多的执行过程。例如，上面对应的完整的调用图表为：  
+
+![图6-10 获取家庭圈信息接口服务的完整的调用图表](http://7xiz2f.com1.z0.glb.clouddn.com/ch-6-xhprof-callgraph.jpg)  
+
+图6-10 获取家庭圈信息接口服务的完整的调用图表
+
+在书本上，图6-10可能查看起来不方便，但大家暂时不必扣于细节，只需要对Xhprof提供的图表有个感性的认识即可。具体的图表，可根据自己项目的情况，生成对应的分析报告再细细研究。从中，我们也看到了，使用PDO连接访问数据库这一链路，耗时最大。下面是对耗时最严重的环节，放大后的局部图表。  
+
+![图6-11 耗时的PDO操作](http://7xiz2f.com1.z0.glb.clouddn.com/ch-6-xhprof-callgraph-pdo.jpg)  
+
+图6-11 耗时的PDO操作
+
+Xhprof工具，通常在开发过程中使用，也就是说，应该在开发环境中使用。结合Xhprof性能分析的报告和图表，从整体到局部，可找到系统中的瓶颈所在，避免进行不必要的优化。可以说Xhprof是一种白盒性能测试，因为它需要知道源代码的实现和执行过程。关于Xhprof的介绍，暂时先到这，但在实际项目开发过程中，你应该有意识地使用该工具对所开发的项目系统进行性能分析。此外，对于获取家庭圈信息接口的性能优化，下面会继续讲到。  
 
 
-### 6.5.4 数据库变更纪录
+### 6.5.3 Autobench压力测试与高效缓存
+
+在优化获取家庭圈信息接口的性能之前，让我们再来认识另一个强大的工具——Autobench。Autobench是一款基于httperf的Perl脚本，可用于Web性能测试和压力测试。在这一小节中，我们来看下如何使用Autobench发现性能瓶颈，以及如何使用高效缓存提升系统的响应时间和吐吞量。  
+
+Autobench与Xhprof有所区别，前者更多是应用在生产环境，通常是测试人员用来对生产环境上的系统进行压力测试时必不可少的工具，而Xhprof只是应用在开发环境。另一个区别是，Xhprof是白盒性能测试，而Autobench则是黑盒性能测试，它不关注内部代码的具体实现的执行过程，而是从外部用户访问和使用的角度来分析系统的性能情况。  
+
+#### 对无缓存的接口服务进行压测
+
+假设Autobench已经安装成功，并且所依赖的httperf、gawk、gnuplot等均已安装完毕。为了方便进行压力测试，先准备一个基础的shell脚本./sh/autobench.sh，其实现代码如下：  
+```bash
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <host> <uri>"
+    echo ""
+    exit
+fi
+
+DM=$1
+URL=$2
+
+#--signle_host 只测单机
+#--host1 测试主机地址
+#--uri1 host1 测试URI
+#--quiet 安静模式
+#--low_rate 测试时最低请求数(指 httperf)
+#--hight_rate 测试时最高请求数
+#--rate_step 每次测试请求数增加步长
+#--num-call 每连接中发起联接数，一般是1
+#--num_conn 测试联接数
+#--file 测试结果输出的 tsv文件
+
+autobench \
+    --single_host \
+    --host1=$DM \
+    --port1=80 \
+    --uri1=$URL \
+    --low_rate=1 \
+    --high_rate=50 \
+    --rate_step=1 \
+    --num_call=1 \
+    --num_conn=50 \
+    --timeout=5 \
+    --file ./$DM.tsv
+```
+其中，比较关键的参数是测试时最低请求数```--low_rate```，测试时最高请求数```--hight_rate```，以及每次测试请求数增加步长```--rate_step```。这些参数可根据实际情况进行调整，如这里是最低请求数为1，最高请求数为50，每次增加的步长为1。赋予执行权限后，便可以执行此脚本进行压力测试，它的第一个参数是待压测的域名，在这里是api.v2.family.com，第二个参数是待压测的访求路径及参数，这里是上面所开发的接口服务Group.getGroupInfo。  
+
+执行以下命令，便可以开始进行压测。  
+```bash
+Family-2.0$ cd sh/
+sh$ ./autobench.sh api.v2.family.com "/fami/?service=Group.getGroupInfo&group_id=1"
+```
+压测期间，可以看到类似这样的状态信息：  
+```bash
+Reply rate [replies/s]: min 0.0 avg 0.0 max 0.0 stddev 0.0 (0 samples)
+Reply time [ms]: response 323.8 transfer 0.0
+Reply size [B]: header 214.0 content 123.0 footer 2.0 (total 339.0)
+Reply status: 1xx=0 2xx=50 3xx=0 4xx=0 5xx=0
+```
+最后，压测完毕后可以看到生成的压测报告数据，保存在./sh/api.v2.family.com.tsv文件中。里面的有各项指标的数据，类似如下：  
+```
+dem_req_rate    req_rate_api.v2.family.com  con_rate_api.v2.family.com  min_rep_rate_api.v2.family.com  avg_rep_rate_api.v2.family.com  max_rep_rate_api.v2.family.com  stddev_rep_rate_api.v2.family.com   resp_time_api.v2.family.com net_io_api.v2.family.com    errors_api.v2.family.com
+1   1.0 1.0 1.0 1.0 1.0 0.0 81.2    0.4 0
+2   2.0 2.0 2.0 2.0 2.0 0.0 77.7    0.9 0
+3   3.0 3.0 3.0 3.0 3.0 0.0 75.8    1.3 0
+... ...
+41  32.9    32.9    0.0 0.0 0.0 0.0 298.1   14.5    0
+42  33.0    33.0    0.0 0.0 0.0 0.0 311.3   14.5    0
+43  32.8    32.8    0.0 0.0 0.0 0.0 333.2   14.4    0
+... ...
+48  15.3    15.3    0.0 0.0 0.0 0.0 1046.8  6.7 0
+49  13.6    13.6    0.0 0.0 0.0 0.0 1268.8  6.0 0
+50  14.6    14.6    0.0 0.0 0.0 0.0 953.7   6.4 0
+```
+
+为了更方便浏览这份报告数据，可以执行以下命令，生成对应的可视化图表。  
+```bash
+sh$ bench2graph ./api.v2.family.com.tsv ./api.v2.family.com_1_50_without_cache.png
+```
+生成的图表如下所示。  
+
+![图6-12 无缓存下的压测情况](http://7xiz2f.com1.z0.glb.clouddn.com/ch-6-api.v2.family.com_1_50_without_cache.png)  
+
+图6-12 无缓存下的压测情况
+
+结合数据报告及可视化的图表，不难发现，在没有使用缓存直接访问数据库的情况下，当请求量在35 QPS以下时，平均响应时间约为81毫秒。但当请求量达到近50 QPS时，响应时间急剧上升到了近1秒。这意味着，当有50个以上客户端同时访问Group.getGroupInfo这个接口服务时，响应时间需要1秒以上。  
+
+那有没有可以优化的办法呢？答案是肯定的。  
+
+#### 使用高效缓存优化响应时间
+
+这里主要的性能瓶颈在于对数据库的访问（关于如何发现系统中的性能瓶颈，下一节会介绍Xhprof工具），因此可以使用高效缓存来对从远程数据库获取的家庭圈信息进行缓存。假设，例如的是Memcache，调整后的Model层代码如下：  
+```php
+// Family-2.0$ vim ./Apps/Fami/Model/Group.php 
+<?php
+class Model_Group extends PhalApi_Model_NotORM {
+    public function getGroupInfoByGroupId($groupId) {
+        //return $this->getORM()
+        //    ->select('number, groupname, password')
+        //    ->where('id', $groupId)
+        //    ->fetchRow();
+
+        $key = 'group_info_' . $groupId;
+        $data = DI()->cache->get($key);
+        if (!empty($data)) {
+            return $data;
+        }
+
+        $data = $this->getORM()
+            ->select('number, groupname, password')
+            ->where('id', $groupId)
+            ->fetchRow();
+        DI()->cache->set($key, $data, 600);
+        return $data;
+    }
+}
+```
+新的Model实现中，先从Memcache缓存中尝试获取缓存的家庭圈信息，如果有缓存则直接返回。没有缓存，再尝试从数据库中获取，从而大大降低减少了对数据库的耗时操作。  
+
+保存代码后，重新进行同样的压力测试，可以看到新的压力测试报告数据类似如下：  
+```
+dem_req_rate    req_rate_api.v2.family.com  con_rate_api.v2.family.com  min_rep_rate_api.v2.family.com  avg_rep_rate_api.v2.family.com  max_rep_rate_api.v2.family.com  stddev_rep_rate_api.v2.family.com   resp_time_api.v2.family.com net_io_api.v2.family.com    errors_api.v2.family.com
+1   1.0 1.0 1.0 1.0 1.0 0.0 33.7    0.4 0
+2   2.0 2.0 2.0 2.0 2.0 0.0 29.4    0.9 0
+3   3.1 3.1 3.0 3.0 3.0 0.0 28.5    1.3 0
+... ...
+41  36.6    36.6    0.0 0.0 0.0 0.0 204.3   16.1    0
+42  37.7    37.7    0.0 0.0 0.0 0.0 189.9   16.6    0
+43  36.4    36.4    0.0 0.0 0.0 0.0 249.1   16.0    0
+... ...
+48  36.6    36.6    0.0 0.0 0.0 0.0 307.4   16.1    0
+49  36.6    36.6    0.0 0.0 0.0 0.0 323.8   16.1    0
+50  36.1    36.1    0.0 0.0 0.0 0.0 343.2   15.9    0
+```
+
+对应的可视化报表为：  
+
+![图6-13 使用缓存的压测情况](http://7xiz2f.com1.z0.glb.clouddn.com/ch-6-api.v2.family.com_1_50_with_cache.png)  
+
+图6-13 使用缓存的压测情况
+
+再次结合报告数据和可视化图表，不难发现，当请求量在35 QPS以下时，接口服务的平均响应约为29毫秒。当请求量接近50 QPS时，响应时间才上升到约340毫秒。  
+
+考虑到数据较多，我们抽取使用缓存前后部分的报告数据进行对比，分别取每秒请求量为5、10、15、……、50时的响应时间，对比并统计如下。  
+
+表6-4 使用高效缓存优化前后的响应时间对比
+
+每秒请求量|未使用缓存的响应时间（ms）|使用高效缓存的响应时间（ms）|响应时间降低比率
+---|---|---|---
+5|77.7|29.8|61.65%
+10|75.5|27.8|63.18%
+15|82.9|27.9|66.34%
+20|81.8|27.7|66.14%
+25|83.8|27.9|66.71%
+30|79.2|28.2|64.39%
+35|100.9|35.9|64.42%
+40|240.4|209.6|12.81%
+45|874.8|259|70.39%
+50|953.7|343.2|64.01%
+
+很明显，使用高效缓存显著提升了接口服务的响应时间，比原来平均减少了约56%和响应时间。上面压测数据根据不同的服务器环境，最终得到的结果也不尽相同。但可以肯定的是，使用本地高效缓存代替远程数据库访问，确实能够大大降低系统的响应时间，优化性能。  
+
+
+### 6.5.3 通过Phing进行版本的发布与回滚
+
+从在本地环境完成接口服务的开发，到最后在线上真实环境接口服务的运行，中间还有一个非常重要的环节。那就是发布。团队会因规模不同、项目性质不同、企业流程不同，而采用不同的发布流程。有的是直接通过FTP进行文件上传，有的是使用自主构建的发布脚本。无论如何，都应该走自动化发布流程，避免人工地打包、上传、解压、改生产配置这些重复性的人工操作。 
+
+在自动化发布中，Phing是个不错的选择。 
+
+对于发布流程，典型的操作应包括：  
+
+ + 1、备份当前代码
+ + 2、从代码版本管理系统中签出最新的发布代码
+ + 3、进行代码发布，替换原有的代码
+ + 4、清理工作
+
+对应的XML配置文件，可参考：  
+```xml
+<!-- Family-2.0$ vim ./build.xml -->
+<?xml version="1.0" encoding="UTF-8"?>
+    <!-- ============================================  -->
+    <!-- Target: build                                 -->
+    <!-- ============================================  -->
+    <target name="build" depends="prepare,gitpull,backup,cleanup">
+        <copy todir="." overwrite="true" >
+            <fileset dir="${git_todir}">
+                <include name="**/**" />
+                <exclude name="./.git" />
+                <exclude name="./.git/**" />
+            </fileset>
+        </copy>
+    </target>
+</project>
+```
+基中，prepare任务主要是进行一些前期的准备，如创建临时目录。gitpull则是从Git仓库拉好最新的发布版本代码，即：  
+```xml
+    <property 
+        name="git_todir" 
+        value="/path/to/publish/api.v2.family.com" 
+        override="true" />
+    <resolvepath propertyName="repo.dir.resolved" file="${git_todir}" />
+
+    <!-- ============================================  -->
+    <!-- Target: git pull                              -->
+    <!-- ============================================  -->
+    <target name="gitpull">
+        <gitpull
+            repository="${repo.dir.resolved}" all="true" />
+    </target>
+```
+backup任务是对当前线上版本的代码进行备份，以便发生异常时及时回滚到上一个版本。在备份的同时，可以根据项目的情况删除历史的备份，减少服务器的硬盘空间负担。最后的cleanup任务是用于清理前期prepare任务中所创建的临时目录和文件。  
+
+在build.xml文件配置好发布的流程后，便可以进行发布操作了。但在发布前，很有必要先准备好回滚操作的配置。回滚操作比较简单，只需要切换到最后一个备份的版本即可，例如这里的：  
+```xml
+<!-- Family-2.0$ vim ./rollback.xml -->
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="api.v2.family.com" default="rollback">
+
+    <property 
+        name="backup_path" 
+        value="/path/to/backup/api.v2.family.com" 
+        override="true" />
+    <property 
+        name="backup_prefix" 
+        value="api.v2.family.com_phing_backup_" 
+        override="true" />
+
+    <!-- ============================================  -->
+    <!-- Target: rollback                              -->
+    <!-- ============================================  -->
+    <target name="rollback" >
+        <unzip file="${backup_path}/${backup_prefix}lastest.zip" todir="." >
+            <fileset dir=".">
+                <include name="*.zip"/>
+            </fileset>
+        </unzip>
+    </target>
+</project>
+```
+有了发布与回滚这两手准备后，便可以放心进行一键发布了！
 
 ## 6.6 成果回顾
+
+本章介绍了对历史遗留项目Family进行重写的开发过程，在前期进行必要的数据库迁移以及对已有的接口系统进行剖析后，我们设计了新的接口系统。重新设计的接口系统更为规范，我们不仅定义了客户端的接入规范，还约定了服务端的开发规范。此外，在新的接口系统，可以为不同的终端、不同的业务提供多个入口，划分后的多模块更有利于子系统的各自演变。而通过系统变量维护服务器配置，可以在不改动代码的情况下，实现不同环境的配置与部署。最后选择合适的扩展类库，大大减少了项目开发的周期，使得开发人员可以专注于项目业务的开发。  
+
+在重写既有的接口服务过程中，对于原来数据量大的数据库表，在新系统中采用了分表策略，从而使得横向扩容更为容易。至于代码层面，应对错综复杂的“万能类”一个有效而实用的工具就是使用特征草图。通过特征草图可以快速洞悉原来的调用依赖关系，再结合提取子类、提取子函数等重构方法便可以得到职责更为明确的设计和实现。如果面对的是更大范围的代码，则可以根据ADM分层模式进行划分，再逐层击破。  
+
+在开发新增的接口服务中，我们也遇到了不少有一定挑战性的问题。首先是对上报的体重数据的分表存储，并为这一基础业务数据开始相应的接口服务。对于复杂的领域业务，我们使用了模板方法设计模式出色地完成了推送功能，并由此产生了衍生的业务数据。为了保障计划任务的正确性，以及获得即时快速的反馈，在对耗时的计划任务进行单元测试时，可使用模拟、替身、桩等，从而大大减少不必要的等待时间。  
+
+最后，完成项目代码的编写后，我们还学习了一些在项目中经常用到或者说是非常有帮助的工具。这些工具有：用于开发环境中剖析内部执行性能的Xhprof、对生产环境系统进行压力测试的Autobench，以及可以进行发布和回滚的Phing。它们都是高级程序员手上必不可少的工具。  
+
+可以说，相比于前面的创业项目，在此重写历史遗留项目中，我们不再重点关注某个类的代码应该如何编写，而是从项目的维度考虑和分析，如何才能更有效地进行项目开发、维护和交付。希望通过这个项目，能给大家带来一定的启发性。

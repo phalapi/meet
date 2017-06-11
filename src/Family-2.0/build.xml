@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- ============================================  -->
+<!-- api.v2.family.com  						   -->
+<!-- @dogstar 20150531                             -->
+<!-- ============================================  -->
+
+<project name="api.v2.family.com" default="build">
+
+    <property 
+        name="backup_path" 
+        value="/path/to/backup/api.v2.family.com" 
+        override="true" />
+    <property 
+        name="backup_prefix" 
+        value="api.v2.family.com_phing_backup_" 
+        override="true" />
+    <property 
+        name="git_todir" 
+        value="/path/to/publish/api.v2.family.com" 
+        override="true" />
+    <resolvepath propertyName="repo.dir.resolved" file="${git_todir}" />
+
+    <!-- ============================================  -->
+    <!-- Target: prepare                               -->
+    <!-- ============================================  -->
+    <target name="prepare">
+        <mkdir dir="./Runtime" />
+        <mkdir dir="${git_todir}" />
+		<mkdir dir="${backup_path}" />
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: git pull                              -->
+    <!-- ============================================  -->
+    <target name="gitpull">
+        <gitpull
+            repository="${repo.dir.resolved}" all="true" />
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: backup                                -->
+    <!-- ============================================  -->
+    <target name="backup">
+        <php 
+            expression="date('Ymd', strtotime('-1 day'))" 
+            returnProperty="backup_version_yesterday" />
+        <php 
+            expression="date('Ymd')" 
+            returnProperty="backup_version_today" />
+		<delete>
+			<fileset dir="${backup_path}">
+				<exclude name="${backup_prefix}${backup_version_yesterday}*" />
+				<exclude name="${backup_prefix}${backup_version_today}*" />
+			</fileset>
+		</delete>
+
+        <php 
+            expression="date('YmdHis')" 
+            returnProperty="backup_version" />
+        <zip destfile="${backup_path}/${backup_prefix}${backup_version}.zip" basedir="." >
+            <fileset dir=".">
+                <include name="**/**" />
+
+                <exclude name="./Runtime" />
+                <exclude name="./Runtime/**" />
+				<exclude name="./.git" />
+				<exclude name="./.git/**" />
+            </fileset>
+        </zip>
+        <copy 
+            file="${backup_path}/${backup_prefix}${backup_version}.zip" 
+            tofile="${backup_path}/${backup_prefix}lastest.zip" 
+            overwrite="true" />
+    </target>
+
+    <target name="cleanup">
+        <delete>
+            <fileset dir=".">
+                <exclude name="./Runtime" />
+                <exclude name="./tmp_files" />
+            </fileset>
+        </delete>
+    </target>
+
+    <!-- ============================================  -->
+    <!-- Target: build                                 -->
+    <!-- ============================================  -->
+    <target name="build" depends="prepare,gitpull,backup,cleanup">
+        <copy todir="." overwrite="true" >
+            <fileset dir="${git_todir}">
+                <include name="**/**" />
+				<exclude name="./.git" />
+				<exclude name="./.git/**" />
+            </fileset>
+        </copy>
+    </target>
+</project>

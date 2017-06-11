@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- ============================================  -->
+<!-- Fami	    								   -->
+<!-- @dogstar 20150531                             -->
+<!-- ============================================  -->
+
+<project name="api.v2.family.com" default="rollback">
+
+    <property 
+        name="backup_path" 
+        value="/path/to/backup/api.v2.family.com" 
+        override="true" />
+    <property 
+        name="backup_prefix" 
+        value="api.v2.family.com_phing_backup_" 
+        override="true" />
+
+    <!-- ============================================  -->
+    <!-- Target: rollback                              -->
+    <!-- ============================================  -->
+    <target name="rollback" >
+        <unzip file="${backup_path}/${backup_prefix}lastest.zip" todir="." >
+            <fileset dir=".">
+                <include name="*.zip"/>
+            </fileset>
+        </unzip>
+    </target>
+
+</project>
