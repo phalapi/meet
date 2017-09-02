@@ -563,7 +563,7 @@ OK (3 tests, 1 assertion)
 
 id|uid|title|content|location|createtime|state|tousers
 ---|---|---|---|---|---|---|---
-1|	1|	测试事件|	这是一个测试事件|		|2017-05-29 09:29:07|	1|	1
+1|  1|  测试事件|   这是一个测试事件|       |2017-05-29 09:29:07|   1|  1
 
 就这样，我们第一个接口服务就已经初步开发完成了！
 
@@ -1330,7 +1330,7 @@ WeTime的管理后台，是基于Yii框架开发的，前端则使用了Bootsrap
         $model->userId = $userId;
 
         $apiClient = new PhalApiClient();
-        $apiClient->request('User.Info', array('otherUserId' => $userId));		
+        $apiClient->request('User.Info', array('otherUserId' => $userId));      
 
         $tip .= $apiClient->getMsg();
         $status = $apiClient->getRet();
@@ -1418,47 +1418,47 @@ WeTime的管理后台，是基于Yii框架开发的，前端则使用了Bootsrap
 
 可以看到，这里也同样有图片上传功能，也需要进行事件发布，因此可以很好地重用已有的接口服务，而不再需要在管理后台系统重复实现。对于此日历事件发布，在管理后台对应的实现代码片段是：  
 ```php
-	public function actionEventAdd()
-	{
-		$this->pageCurPosition[] = '事件添加';
-		$this->setPageTitle($this->headerTitle . ' - ' . Yii::app()->name);
-		$this->pageLeftBarPos = 12;
-		
-		$tip = '';
-		$status = null;
-		
-		$model = new EventForm();
-		$model->time = date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']);
-		
-		if (isset($_POST['EventForm'])) {
-			$model->attributes = $_POST['EventForm'];
-			if($model->validate()){
-				$tip .= '<br/>';
-				
-				$model->pics = isset($_POST['pics']) && is_array($_POST['pics']) ? $_POST['pics'] : array();
-			
-				// 调用接口服务发布日历事件
-				$apiClient = PhalApiClient::getInstance();
-				$apiClient->request('Event.Post', $model->toArray());
-				
-				if ($apiClient->getRet() == PhalApiClient::STATUS_OK) {
-					$apiData = $apiClient->getData();
-					if ($apiData['code'] == 0) {
-						$tip .= sprintf('已经为用户：<strong>%s</strong>，成功添加事件：<strong>%s</strong>', $model->userId, $model->title);
-						$status = PhalApiClient::STATUS_OK;
-					} else {
-						$tip .= sprintf('<font color="red">添加失败，code = %s </font>', $apiData['code']);
-					$status = PhalApiClient::STATUS_WRONG;
-					}
-				} else {
-					$tip .= sprintf('<font color="red">添加失败，错误信息：%s </font>', $apiClient->getMsg());
-					$status = PhalApiClient::STATUS_ERROR;
+    public function actionEventAdd()
+    {
+        $this->pageCurPosition[] = '事件添加';
+        $this->setPageTitle($this->headerTitle . ' - ' . Yii::app()->name);
+        $this->pageLeftBarPos = 12;
+        
+        $tip = '';
+        $status = null;
+        
+        $model = new EventForm();
+        $model->time = date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']);
+        
+        if (isset($_POST['EventForm'])) {
+            $model->attributes = $_POST['EventForm'];
+            if($model->validate()){
+                $tip .= '<br/>';
+                
+                $model->pics = isset($_POST['pics']) && is_array($_POST['pics']) ? $_POST['pics'] : array();
+            
+                // 调用接口服务发布日历事件
+                $apiClient = PhalApiClient::getInstance();
+                $apiClient->request('Event.Post', $model->toArray());
+                
+                if ($apiClient->getRet() == PhalApiClient::STATUS_OK) {
+                    $apiData = $apiClient->getData();
+                    if ($apiData['code'] == 0) {
+                        $tip .= sprintf('已经为用户：<strong>%s</strong>，成功添加事件：<strong>%s</strong>', $model->userId, $model->title);
+                        $status = PhalApiClient::STATUS_OK;
+                    } else {
+                        $tip .= sprintf('<font color="red">添加失败，code = %s </font>', $apiData['code']);
+                    $status = PhalApiClient::STATUS_WRONG;
+                    }
+                } else {
+                    $tip .= sprintf('<font color="red">添加失败，错误信息：%s </font>', $apiClient->getMsg());
+                    $status = PhalApiClient::STATUS_ERROR;
                 }
-			}
-		}
-		
-		$this->render('eventAdd', array('tip' => $tip, 'status' => $status, 'model' => $model));
-	}
+            }
+        }
+        
+        $this->render('eventAdd', array('tip' => $tip, 'status' => $status, 'model' => $model));
+    }
 ```
 上面的代码，实现的功能主要是，对页面进行设置，收集表单数据并调用远程的日历事件发布```Event.Post```接口服务，最后处理返回的结果并渲染页面。  
 

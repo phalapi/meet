@@ -737,9 +737,9 @@ class Common_Request_Ch1 extends PhalApi_Request {
 
     public function getService() {
         // 优先返回自定义格式的接口服务名称
-        $servcie = $this->get('r');
-        if (!empty($servcie)) {
-            return str_replace('/', '.', $servcie);
+        $service = $this->get('r');
+        if (!empty($service)) {
+            return str_replace('/', '.', $service);
         }
 
         return parent::getService();
@@ -2334,13 +2334,6 @@ Yaconf扩展需要PHP 7及以上版本，并且需要先安装Yaconf扩展。
   
 安装部署完成后，便和正常的配置一样使用。
 
-假设我们已经有了这样的配置文件 ./test.ini：  
-```
-name="PhalApi"
-version="1.3.1"
-```
-
-则可以这样使用：  
 ```php
 // 注册
 DI()->config = new PhalApi_Config_Yaconf();
@@ -3229,8 +3222,8 @@ DI()->notorm->transaction = 'COMMIT';
     DI()->notorm->beginTransaction('db_demo');
 
     // Step 2: 数据库操作
-    DI()->notorm->user>insert(array('name' => 'test1'));
-    DI()->notorm->user>insert(array('name' => 'test2'));
+    DI()->notorm->user->insert(array('name' => 'test1'));
+    DI()->notorm->user->insert(array('name' => 'test2'));
 
     // Step 3: 提交事务/回滚
     DI()->notorm->commit('db_demo');

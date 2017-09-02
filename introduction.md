@@ -39,6 +39,7 @@ $rs = DI()->notorm->user->where('id', $userId)->update($data);
 ... ...
 ```
 
+
 ### 命令操作
 若无特殊说明，执行命令的所在目录是当前项目的根路径，例如前面的：  
 ```
@@ -51,3 +52,9 @@ $ vim ./Shop/Api/Welcome.php
 > **温馨提示：**这是温馨提示说明。
 
 
+### 本书所使用的环境  
+
+ + PHP 5.3.10  
+ + Nginx 1.1.19   
+ + PhalApi 1.4.0    
+ + Ubuntu 12.04（64位） 

@@ -1421,7 +1421,7 @@ Error: Act exists!
  + **第三个参数bootstrap**  是测试启动文件，通常是/path/to/test_env.php文件。  
  + **第四个参数author** 你的名字，默认是dogstar。  
    
-通常，可以先写好类名以及相应的接口，然后再使用此脚本生成单元测试骨架代码。以Shop项目中Hello World接口为例为例，当需要为Api_Welcome类生成单元测试骨架代码时，可以依次这样操作。  
+通常，可以先写好类名以及相应的接口，然后再使用此脚本生成单元测试骨架代码。以Shop项目中Hello World接口为例，当需要为Api_Welcome类生成单元测试骨架代码时，可以依次这样操作。  
 ```bash
 $ cd ./Shop/Tests
 $ ../../PhalApi/phalapi-buildtest ../Api/Welcome.php Api_Welcome ./test_env.php > ./Api/Api_Welcome_Test.php
